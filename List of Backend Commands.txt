@@ -1,0 +1,53 @@
+List of All Backend Commands
+
+FORMAT
+returnType commandName(parameters: parameterTypes)
+
+When structuring the routes, I would use something like this:
+
+[PointofContact, Student][] getAppointmentsbyAdminIDandDate(id: number, date: Date)
+would be
+/appointments/admin/{id}/date/{date}
+
+
+**GET COMMANDS*
+
+BULK COMMANDS
+Person[] getPeople()
+Admin[] getAdmins()
+Students[] getStudents()
+Activity[] getActivity()
+Documentation[] getDocumentation()
+PersonalDocumentation[] getPersonalDocumentation()
+SpecificDocumentation[] getSpecificDocumentation()
+PointofContact[] getPointsofContact()
+Disability[] getDisabilities()
+Accommodation[] getAccommodations()
+
+{id, disability_id}[] getStuDis()
+{id, accommodation_id}[] getStuAccom()
+{id(admin), id(student)}[] getPinned()
+{id, activity_id}[] getPocAdmin()
+
+ID COMMANDS
+Person getPersonByID(id: number)
+Admin getAdminByID(id: number)
+Students getStudentByID(id: number)
+Activity getActivityByID(activity_id: number)
+Documentation getDocumentationByID(activity_id: number)
+PersonalDocumentation getPersonalDocumentationByID(activity_id: number)
+SpecificDocumentation getSpecificDocumentationByID(activity_id: number)
+PointofContact getPointofContactByID(activity_id: number)
+Disability getDisabilityByID(disability_id: number)
+Accommodation getAccommodationByID(accommodation_id: number)
+
+MISCELLANEOUS
+Student[] getPinnedByAdminID(id: number)
+Student[] getStudentsByName(name: string)
+Activity[] getActivitiesByDate(date: Date)
+Activity[] getActivityByStudentID(id: number)
+SpecificDocumentation[] getSpecificDocumentationByStudentID(id: number)
+PointOfContact[] getMeetingsByAdminIDAndDate(id: number, date: Date)
+PointofContact[] getFutureMeetingsByStudentIDAndAdminID(id(admin): number, id(student): number)
+Disability[] getDisabilitiesByStudentID(id: number)
+Accommodation[] getAccommodationsByStudentID(id: number)
