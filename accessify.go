@@ -378,5 +378,5 @@ func main() {
 	corsRouter := handlers.CORS(originsOk, headersOk, methodsOk)(router)
 
 	// 4. Start server with CORS enabled
-	http.ListenAndServe(":8080", corsRouter)
+	http.ListenAndServe("0.0.0.0:8080", corsRouter)
 }
