@@ -17,18 +17,18 @@ var db *sql.DB
 
 func main() {
 	// 1. Connect to MySQL
-	dsn := "peter:pjaplmTabs7!@tcp(piconexdb.ck9isqcma7t8.us-east-1.rds.amazonaws.com:3306)/piconexdb"
+	dsn := "peter:pjaplmTabs7!@tcp(127.0.0.1:3306)/piconexdb"
 	var err error
 	db, err = sql.Open("mysql", dsn)
 	if err != nil {
-		log.Fatal("Error opening database:", err)
+		log.Fatal("❌ Error opening database:", err)
 	}
 	defer db.Close()
 
 	if err = db.Ping(); err != nil {
-		log.Fatal("Error connecting to database:", err)
+		log.Fatal("❌ Error connecting to database:", err)
 	}
-	fmt.Println("Connected to MySQL successfully!")
+	fmt.Println("✅ Connected to MySQL successfully!")
 
 	// 2. Build router
 	router := mux.NewRouter()
