@@ -365,6 +365,18 @@ func main() {
 		routes.GetAccommodationsByStudentID(db, w, r)
 	}).Methods("GET", "OPTIONS")
 
+	//POST COMMANDS
+	router.HandleFunc("/student", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "OPTIONS" {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		routes.CreateStudent(db, w, r)
+	}).Methods("POST", "OPTIONS")
+
 	// 3. CORS middleware
 	headersOk := handlers.AllowedHeaders([]string{
 		"X-Requested-With", "Content-Type", "Authorization", "ngrok-skip-browser-warning",
