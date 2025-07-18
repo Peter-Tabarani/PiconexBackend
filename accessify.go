@@ -220,7 +220,6 @@ func main() {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
 	}).Methods("GET", "PUT", "DELETE", "OPTIONS")
-
 	router.HandleFunc("/admin/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -229,8 +228,18 @@ func main() {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		routes.GetAdminByID(db, w, r)
-	}).Methods("GET", "OPTIONS")
+
+		switch r.Method {
+		case "GET":
+			routes.GetAdminByID(db, w, r)
+		case "PUT":
+			routes.UpdateAdminByID(db, w, r)
+		case "DELETE":
+			routes.DeleteAdminByID(db, w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	}).Methods("GET", "PUT", "DELETE", "OPTIONS")
 	router.HandleFunc("/activity/{activity_id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
