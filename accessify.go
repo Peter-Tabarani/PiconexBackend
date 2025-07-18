@@ -58,8 +58,6 @@ func main() {
 			routes.GetStudents(db, w, r)
 		case "POST":
 			routes.CreateStudent(db, w, r)
-		case "PUT":
-			routes.UpdateStudent(db, w, r)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
