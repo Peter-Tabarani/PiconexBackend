@@ -72,8 +72,16 @@ func main() {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		routes.GetAdmins(db, w, r)
-	}).Methods("GET", "OPTIONS")
+
+		switch r.Method {
+		case "GET":
+			routes.GetAdmins(db, w, r)
+		case "POST":
+			routes.CreateAdmin(db, w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	}).Methods("GET", "POST", "OPTIONS")
 	router.HandleFunc("/activity", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
