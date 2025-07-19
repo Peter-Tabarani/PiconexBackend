@@ -118,8 +118,16 @@ func main() {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		routes.GetSpecificDocumentations(db, w, r)
-	}).Methods("GET", "OPTIONS")
+
+		switch r.Method {
+		case "GET":
+			routes.GetSpecificDocumentations(db, w, r)
+		case "POST":
+			routes.CreateSpecificDocumentation(db, w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	}).Methods("GET", "POST", "OPTIONS")
 	router.HandleFunc("/disability", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -278,8 +286,18 @@ func main() {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		routes.GetSpecificDocumentationByID(db, w, r)
-	}).Methods("GET", "OPTIONS")
+
+		switch r.Method {
+		case "GET":
+			routes.GetSpecificDocumentationByID(db, w, r)
+		case "PUT":
+			routes.UpdateSpecificDocumentationByID(db, w, r)
+		case "DELETE":
+			routes.DeleteSpecificDocumentationByID(db, w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	}).Methods("GET", "PUT", "DELETE", "OPTIONS")
 	router.HandleFunc("/point-of-contact/{activity_id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -400,18 +418,6 @@ func main() {
 		}
 		routes.GetAccommodationsByStudentID(db, w, r)
 	}).Methods("GET", "OPTIONS")
-
-	//POST COMMANDS
-	router.HandleFunc("/student", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "OPTIONS" {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		routes.CreateStudent(db, w, r)
-	}).Methods("POST", "OPTIONS")
 
 	// 3. CORS middleware
 	headersOk := handlers.AllowedHeaders([]string{
