@@ -10,6 +10,7 @@ import (
 )
 
 func DeleteSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Only allow DELETE method
 	if r.Method != http.MethodDelete {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -23,28 +24,23 @@ func DeleteSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Delete from specific_documentation by activity_id
-	query := `DELETE FROM specific_documentation WHERE activity_id = ?`
-
-	res, err := db.Exec(query, activityID)
+	// Delete activity record (will cascade to documentation and specific_documentation)
+	res, err := db.Exec("DELETE FROM activity WHERE activity_id = ?", activityID)
 	if err != nil {
-		http.Error(w, "Failed to delete specific documentation: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to delete activity and related documentation: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		http.Error(w, "Failed to retrieve affected rows: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Error checking deletion result: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	if rowsAffected == 0 {
-		http.Error(w, "No specific documentation found with that activity_id", http.StatusNotFound)
+		http.Error(w, "Activity not found", http.StatusNotFound)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "Specific documentation deleted successfully",
-	})
+	json.NewEncoder(w).Encode(map[string]string{"message": "Activity and related documentation deleted successfully"})
 }
