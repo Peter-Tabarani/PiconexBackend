@@ -3,12 +3,17 @@ package routes
 import (
 	"database/sql"
 	"encoding/json"
-	"io"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
 )
+
+type UpdateSpecificDocumentationRequest struct {
+	DocType   string `json:"doc_type"` // enum('trad','al','in')
+	StudentID int    `json:"student_id"`
+}
 
 func UpdateSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
@@ -24,104 +29,25 @@ func UpdateSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Parse multipart form, limit max memory to 10MB (adjust as needed)
-	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		http.Error(w, "Error parsing multipart form: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// Get form values (optional updates)
-	docType := r.FormValue("doc_type")
-	studentIDStr := r.FormValue("student_id")
-
-	var studentID int
-	if studentIDStr != "" {
-		studentID, err = strconv.Atoi(studentIDStr)
-		if err != nil {
-			http.Error(w, "Invalid student ID", http.StatusBadRequest)
-			return
-		}
-	}
-
-	// Get file from form (optional)
-	var fileBytes []byte
-	file, _, err := r.FormFile("file")
-	if err == nil {
-		defer file.Close()
-		fileBytes, err = io.ReadAll(file)
-		if err != nil {
-			http.Error(w, "Error reading file: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-	} else if err != http.ErrMissingFile {
-		// Only error if the error is something other than missing file (which is allowed)
-		http.Error(w, "Error retrieving file: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	tx, err := db.Begin()
+	var req UpdateSpecificDocumentationRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, "Failed to start transaction", http.StatusInternalServerError)
+		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
 		return
 	}
 
-	// Update documentation table (file) only if file was provided
-	if len(fileBytes) > 0 {
-		docUpdate := `UPDATE documentation SET file=? WHERE activity_id=?`
-		_, err = tx.Exec(docUpdate, fileBytes, activityID)
-		if err != nil {
-			tx.Rollback()
-			http.Error(w, "Failed to update documentation: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
-
-	// Update specific_documentation table only if docType or studentID was provided
-	if docType != "" || studentIDStr != "" {
-		// Build dynamic query based on provided fields
-		query := "UPDATE specific_documentation SET "
-		args := []interface{}{}
-		setClauses := []string{}
-
-		if docType != "" {
-			setClauses = append(setClauses, "doc_type=?")
-			args = append(args, docType)
-		}
-		if studentIDStr != "" {
-			setClauses = append(setClauses, "id=?")
-			args = append(args, studentID)
-		}
-
-		query += join(setClauses, ", ")
-		query += " WHERE activity_id=?"
-		args = append(args, activityID)
-
-		_, err = tx.Exec(query, args...)
-		if err != nil {
-			tx.Rollback()
-			http.Error(w, "Failed to update specific documentation: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to commit transaction: "+err.Error(), http.StatusInternalServerError)
+	// Update only specific_documentation table (doc_type, student_id)
+	_, err = db.Exec(`
+		UPDATE specific_documentation
+		SET doc_type = ?, id = ?
+		WHERE activity_id = ?`,
+		req.DocType, req.StudentID, activityID,
+	)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to update specific documentation: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Specific documentation updated successfully"})
-}
-
-// helper function to join strings (could use strings.Join but for []string)
-func join(strs []string, sep string) string {
-	result := ""
-	for i, s := range strs {
-		if i > 0 {
-			result += sep
-		}
-		result += s
-	}
-	return result
+	fmt.Fprint(w, "Specific documentation updated successfully")
 }
