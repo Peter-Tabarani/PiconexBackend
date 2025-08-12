@@ -101,15 +101,24 @@ func main() {
 		routes.GetDocumentations(db, w, r)
 	}).Methods("GET", "OPTIONS")
 	router.HandleFunc("/personal-documentation", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
+
 		if r.Method == "OPTIONS" {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		routes.GetPersonalDocumentations(db, w, r)
-	}).Methods("GET", "OPTIONS")
+
+		switch r.Method {
+		case "GET":
+			routes.GetPersonalDocumentations(db, w, r)
+		case "POST":
+			routes.CreatePersonalDocumentation(db, w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	}).Methods("GET", "POST", "OPTIONS")
 	router.HandleFunc("/specific-documentation", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -269,15 +278,26 @@ func main() {
 		routes.GetDocumentationByID(db, w, r)
 	}).Methods("GET", "OPTIONS")
 	router.HandleFunc("/personal-documentation/{activity_id}", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
+
 		if r.Method == "OPTIONS" {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		routes.GetPersonalDocumentationByID(db, w, r)
-	}).Methods("GET", "OPTIONS")
+
+		switch r.Method {
+		case "GET":
+			routes.GetPersonalDocumentationByID(db, w, r)
+		case "PUT":
+			routes.UpdatePersonalDocumentationByID(db, w, r)
+		case "DELETE":
+			routes.DeletePersonalDocumentationByID(db, w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	}).Methods("GET", "PUT", "DELETE", "OPTIONS")
 	router.HandleFunc("/specific-documentation/{activity_id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
