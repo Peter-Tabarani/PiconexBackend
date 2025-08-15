@@ -155,8 +155,16 @@ func main() {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		routes.GetAccommodations(db, w, r)
-	}).Methods("GET", "OPTIONS")
+
+		switch r.Method {
+		case "GET":
+			routes.GetAccommodations(db, w, r)
+		case "POST":
+			routes.CreateAccommodation(db, w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	}).Methods("GET", "POST", "OPTIONS")
 	router.HandleFunc("/point-of-contact", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -338,16 +346,26 @@ func main() {
 		}
 		routes.GetDisabilityByID(db, w, r)
 	}).Methods("GET", "OPTIONS")
-	router.HandleFunc("/accommodation/{accommodation_id}", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/accommodation/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		routes.GetAccommodationByID(db, w, r)
-	}).Methods("GET", "OPTIONS")
+
+		switch r.Method {
+		case "GET":
+			routes.GetAccommodationByID(db, w, r)
+		case "PUT":
+			routes.UpdateAccommodationByID(db, w, r)
+		case "DELETE":
+			routes.DeleteAccommodationByID(db, w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	}).Methods("GET", "PUT", "DELETE", "OPTIONS")
 	router.HandleFunc("/pinned/admin/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
