@@ -7,13 +7,12 @@ import (
 	"strconv"
 
 	"github.com/Peter-Tabarani/PiconexBackend/models"
-
 	"github.com/gorilla/mux"
 )
 
 func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	idStr := vars["accommodation_id"]
+	idStr := vars["id"] // match the route
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -37,13 +36,7 @@ func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonBytes, err := json.MarshalIndent(accom, "", "    ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	json.NewEncoder(w).Encode(accom)
 }
