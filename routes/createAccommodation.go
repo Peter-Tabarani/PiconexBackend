@@ -26,44 +26,20 @@ func CreateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := db.Begin()
-	if err != nil {
-		http.Error(w, "Failed to start transaction: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	accomQuery := `
-		INSERT INTO accommodation (
-			name, description
-		) VALUES (?, ?)
-	`
-
-	res, err := tx.Exec(accomQuery,
-		req.Accommodation.Name,
-		req.Accommodation.Description,
+	res, err := db.Exec(
+		"INSERT INTO accommodation (name, description) VALUES (?, ?)",
+		req.Accommodation.Name, req.Accommodation.Description,
 	)
 	if err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to insert into accommodation: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to insert accommodation: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	accomID, err := res.LastInsertId()
-	if err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to retrieve accommodation ID: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if err := tx.Commit(); err != nil {
-		http.Error(w, "Failed to commit transaction: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
+	lastID, _ := res.LastInsertId()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"message":         "Accommodation created successfully",
-		"accommodationId": accomID,
+		"message":          "Accommodation created successfully",
+		"accommodation_id": lastID,
 	})
 }
