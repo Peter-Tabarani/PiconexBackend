@@ -17,7 +17,7 @@ var db *sql.DB
 
 func main() {
 	// 1. Connect to MySQL
-	dsn := "peter:pjaplmTabs7!@tcp(127.0.0.1:3306)/piconexdb"
+	dsn := "piconex:pjaplmTabs7!@tcp(178.156.189.138:3306)/piconexdb"
 	var err error
 	db, err = sql.Open("mysql", dsn)
 	if err != nil {
