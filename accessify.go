@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"context"
 
 	"github.com/Peter-Tabarani/PiconexBackend/routes"
 
@@ -470,5 +474,35 @@ func main() {
 	corsRouter := handlers.CORS(originsOk, headersOk, methodsOk)(router)
 
 	// 4. Start server with CORS enabled
-	http.ListenAndServe("0.0.0.0:8080", corsRouter)
+	srv := &http.Server{
+		Addr:    "0.0.0.0:8080",
+		Handler: corsRouter,
+	}
+
+	// Channel to listen for SIGTERM / SIGINT
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	// Run server in a goroutine
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("❌ Server error: %v", err)
+		}
+	}()
+
+	log.Println("✅ Server started on :8080")
+
+	// Wait for termination signal
+	<-stop
+	log.Println("🛑 Shutting down gracefully...")
+
+	// Graceful shutdown with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("❌ Server forced to shutdown: %v", err)
+	}
+
+	log.Println("✅ Server exited properly")
+
 }
