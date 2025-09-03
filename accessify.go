@@ -33,7 +33,6 @@ func main() {
 	if err = db.Ping(); err != nil {
 		log.Fatal("❌ Error connecting to database:", err)
 	}
-	fmt.Println("✅ Connected to MySQL successfully!")
 
 	// 2. Build router
 	router := mux.NewRouter()
