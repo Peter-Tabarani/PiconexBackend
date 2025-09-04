@@ -16,7 +16,7 @@ func DeleteDisabilityByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
 
 	vars := mux.Vars(r)
-	idStr := vars["disability_id"]
+	idStr := vars["id"]
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		http.Error(w, "Invalid disability ID", http.StatusBadRequest)
