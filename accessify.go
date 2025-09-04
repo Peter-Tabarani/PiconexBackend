@@ -209,13 +209,21 @@ func main() {
 	router.HandleFunc("/pinned", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		routes.GetPinned(db, w, r)
-	}).Methods("GET", "OPTIONS")
+
+		switch r.Method {
+		case "GET":
+			routes.GetPinned(db, w, r)
+		case "POST":
+			routes.CreatePinnedByID(db, w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	}).Methods("GET", "POST", "OPTIONS")
 	router.HandleFunc("/pocadmin", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -400,21 +408,19 @@ func main() {
 	router.HandleFunc("/pinned/{admin_id}/{student_id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "POST, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
 			w.WriteHeader(http.StatusOK)
 			return
 		}
 
 		switch r.Method {
-		case "POST":
-			routes.CreatePinnedByID(db, w, r)
 		case "DELETE":
 			routes.DeletePinnedByID(db, w, r)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
-	}).Methods("POST", "DELETE", "OPTIONS")
+	}).Methods("DELETE", "OPTIONS")
 	router.HandleFunc("/student/name/{name}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
