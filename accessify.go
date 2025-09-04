@@ -1,13 +1,13 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"context"
 	"time"
 
 	"github.com/Peter-Tabarani/PiconexBackend/routes"
@@ -347,7 +347,7 @@ func main() {
 		}
 		routes.GetPointOfContactByID(db, w, r)
 	}).Methods("GET", "OPTIONS")
-	router.HandleFunc("/disability/{disability_id}", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/disability/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, PUT, DELETE, OPTIONS")
