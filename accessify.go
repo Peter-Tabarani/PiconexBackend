@@ -397,6 +397,24 @@ func main() {
 		}
 		routes.GetPinnedByAdminID(db, w, r)
 	}).Methods("GET", "OPTIONS")
+	router.HandleFunc("/pinned/{admin_id}/{student_id}", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "OPTIONS" {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		switch r.Method {
+		case "POST":
+			routes.CreatePinnedByID(db, w, r)
+		case "DELETE":
+			routes.DeletePinnedByID(db, w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	}).Methods("POST", "DELETE", "OPTIONS")
 	router.HandleFunc("/student/name/{name}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
