@@ -224,16 +224,24 @@ func main() {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
 	}).Methods("GET", "POST", "OPTIONS")
-	router.HandleFunc("/pocadmin", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/poc_admin", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		routes.GetPocAdmin(db, w, r)
-	}).Methods("GET", "OPTIONS")
+
+		switch r.Method {
+		case "GET":
+			routes.GetPocAdmin(db, w, r)
+		case "POST":
+			routes.CreatePocAdmin(db, w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	}).Methods("GET", "POST", "OPTIONS")
 	router.HandleFunc("/person/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -417,6 +425,22 @@ func main() {
 		switch r.Method {
 		case "DELETE":
 			routes.DeletePinnedByID(db, w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	}).Methods("DELETE", "OPTIONS")
+	router.HandleFunc("/poc_admin/{activity_id}/{admin_id}", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "OPTIONS" {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		switch r.Method {
+		case "DELETE":
+			routes.DeletePocAdmin(db, w, r)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
