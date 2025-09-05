@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Peter-Tabarani/PiconexBackend/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 
 	"github.com/gorilla/mux"
 )
@@ -22,7 +22,7 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	}
 
 	query := `
-		SELECT 
+		SELECT
 			pd.activity_id,
 			pd.id,
 			a.date,

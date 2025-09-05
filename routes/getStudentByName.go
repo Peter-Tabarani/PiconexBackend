@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Peter-Tabarani/PiconexBackend/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 
 	"github.com/gorilla/mux"
 )
@@ -42,7 +42,7 @@ func GetStudentByName(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	whereClause := strings.Join(conditions, " AND ")
 
 	query := `
-		SELECT 
+		SELECT
 			s.id, p.first_name, p.preferred_name, p.middle_name, p.last_name,
 			p.email, p.phone_number, p.pronouns, p.sex, p.gender, p.birthday,
 			p.address, p.city, p.state, p.zip_code, p.country,

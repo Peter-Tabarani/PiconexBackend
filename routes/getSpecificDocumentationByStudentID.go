@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Peter-Tabarani/PiconexBackend/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 
 	"github.com/gorilla/mux"
 )
@@ -21,7 +21,7 @@ func GetSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *h
 	}
 
 	query := `
-		SELECT 
+		SELECT
 			ac.activity_id, sd.id, sd.doc_type, ac.date, ac.time, d.file
 		FROM specific_documentation sd
 		JOIN documentation d ON sd.activity_id = d.activity_id

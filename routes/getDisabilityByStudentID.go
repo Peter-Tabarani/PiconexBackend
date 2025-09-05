@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Peter-Tabarani/PiconexBackend/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 
 	"github.com/gorilla/mux"
 )
@@ -21,7 +21,7 @@ func GetDisabilitiesByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Reque
 	}
 
 	query := `
-		SELECT 
+		SELECT
 			d.disability_id, d.name, d.description
 		FROM stu_dis sd
 		JOIN disability d ON sd.disability_id = d.disability_id

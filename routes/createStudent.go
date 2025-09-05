@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/Peter-Tabarani/PiconexBackend/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 
 	_ "github.com/go-sql-driver/mysql"
 )

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Peter-Tabarani/PiconexBackend/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 
 	"github.com/gorilla/mux"
 
@@ -24,9 +24,9 @@ func GetPersonByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `
-        SELECT 
-            id, first_name, preferred_name, middle_name, last_name, email, 
-            phone_number, pronouns, sex, gender, birthday, address, 
+        SELECT
+            id, first_name, preferred_name, middle_name, last_name, email,
+            phone_number, pronouns, sex, gender, birthday, address,
             city, state, zip_code, country
         FROM person
         WHERE id = ?

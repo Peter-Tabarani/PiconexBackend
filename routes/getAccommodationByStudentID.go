@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Peter-Tabarani/PiconexBackend/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 
 	"github.com/gorilla/mux"
 )
@@ -21,7 +21,7 @@ func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	}
 
 	query := `
-		SELECT 
+		SELECT
 			a.accommodation_id, a.name, a.description
 		FROM stu_accom sa
 		JOIN accommodation a ON sa.accommodation_id = a.accommodation_id

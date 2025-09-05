@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Peter-Tabarani/PiconexBackend/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 	"github.com/gorilla/mux"
 )
 
@@ -20,7 +20,7 @@ func GetSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	}
 
 	query := `
-        SELECT 
+        SELECT
             sd.activity_id,
             sd.id,
             sd.doc_type,

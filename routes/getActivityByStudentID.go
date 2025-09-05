@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Peter-Tabarani/PiconexBackend/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 
 	"github.com/gorilla/mux"
 )
@@ -21,7 +21,7 @@ func GetActivitiesByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request
 	}
 
 	query := `
-		SELECT 
+		SELECT
 			a.activity_id, a.date, a.time
 		FROM specific_documentation sd
 		JOIN activity a ON sd.activity_id = a.activity_id

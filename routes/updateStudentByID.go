@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Peter-Tabarani/PiconexBackend/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 	"github.com/gorilla/mux"
 )
 
@@ -23,8 +23,8 @@ func UpdateStudentByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Update only fields that were sent (optional: dynamic SQL builder)
 	_, err = db.Exec(`
-		UPDATE person 
-		SET gender = ? 
+		UPDATE person
+		SET gender = ?
 		WHERE id = ?`, s.Gender, id)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to update: %v", err), http.StatusInternalServerError)

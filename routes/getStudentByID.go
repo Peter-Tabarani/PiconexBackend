@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Peter-Tabarani/PiconexBackend/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 
 	"github.com/gorilla/mux"
 
@@ -24,7 +24,7 @@ func GetStudentByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `
-		SELECT 
+		SELECT
 			s.id,
 			p.first_name, p.preferred_name, p.middle_name, p.last_name,
 			p.email, p.phone_number, p.pronouns, p.sex, p.gender,
