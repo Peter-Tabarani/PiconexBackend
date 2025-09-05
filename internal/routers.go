@@ -14,7 +14,7 @@ func NewRouter(db *sql.DB) *mux.Router {
 	routes.RegisterPersonRoutes(router, db)
 	routes.RegisterStudentRoutes(router, db)
 	routes.RegisterAdminRoutes(router, db)
-	// routes.RegisterActivityRoutes(router, db)
+	routes.RegisterActivityRoutes(router, db)
 	// routes.RegisterDocumentationRoutes(router, db)
 	// routes.RegisterPersonalDocumentationRoutes(router, db)
 	// routes.RegisterSpecificDocumentationRoutes(router, db)
