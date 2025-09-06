@@ -36,7 +36,7 @@ func RegisterDisabilityRoutes(router *mux.Router, db *sql.DB) {
 	})).Methods("GET", "PUT", "DELETE", "OPTIONS")
 
 	router.HandleFunc("/disability/student/{id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
-		handlers.GetPersonByID(db, w, r)
+		handlers.GetDisabilitiesByStudentID(db, w, r)
 	})).Methods("GET", "OPTIONS")
 
 }
