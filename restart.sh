@@ -9,10 +9,10 @@ BACKEND_LOG="$BACKEND_DIR/log/backend.log"
 cd $BACKEND_DIR
 
 echo "[$(date)] 🔨 Building backend..." >> "$LOG_FILE"
-go build -o accessify accessify.go >> "$LOG_FILE" 2>&1
+go build -o main main.go >> "$LOG_FILE" 2>&1
 
 # Find running backend PID
-PID=$(pgrep -f accessify)
+PID=$(pgrep -f main)
 
 if [ -n "$PID" ]; then
     echo "[$(date)] 🛑 Sending SIGTERM to PID $PID..." >> "$LOG_FILE"
@@ -31,5 +31,5 @@ while lsof -i :8080 >/dev/null; do
 done
 
 echo "[$(date)] 🚀 Starting backend..." >> "$LOG_FILE"
-nohup $BACKEND_DIR/accessify >> "$BACKEND_LOG" 2>&1 < /dev/null &
+nohup $BACKEND_DIR/main >> "$BACKEND_LOG" 2>&1 < /dev/null &
 echo "[$(date)] ✅ Backend started with PID $!" >> "$LOG_FILE"
