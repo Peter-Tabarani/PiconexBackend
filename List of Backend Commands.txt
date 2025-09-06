@@ -53,3 +53,6 @@ PointofContact[] getFutureMeetingsByStudentIDAndAdminID(id(student): number, id(
 Disability[] getDisabilitiesByStudentID(id: number)
 Accommodation[] getAccommodationsByStudentID(id: number)
 {Activity, name: string} getIncomingActivity(id: number)
+
+NEED TO ADD
+PersonalDocumentation[] getPersonalDocumentationByStudentID(id: number)
