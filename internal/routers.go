@@ -18,9 +18,9 @@ func NewRouter(db *sql.DB) *mux.Router {
 	// routes.RegisterDocumentationRoutes(router, db)
 	// routes.RegisterPersonalDocumentationRoutes(router, db)
 	// routes.RegisterSpecificDocumentationRoutes(router, db)
-	// routes.RegisterPointOfContactRoutes(router, db)
-	// routes.RegisterDisabilityRoutes(router, db)
-	// routes.RegisterAccommodationRoutes(router, db)
+	routes.RegisterPointOfContactRoutes(router, db)
+	routes.RegisterDisabilityRoutes(router, db)
+	routes.RegisterAccommodationRoutes(router, db)
 
 	return router
 }
