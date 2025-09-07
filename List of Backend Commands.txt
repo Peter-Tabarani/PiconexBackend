@@ -55,4 +55,5 @@ Accommodation[] getAccommodationsByStudentID(id: number)
 {Activity, name: string} getIncomingActivity(id: number)
 
 NEED TO ADD
-PersonalDocumentation[] getPersonalDocumentationByStudentID(id: number)
+PersonalDocumentation[] (id: number)
+Student[] GetPinnedStudentsByAdminID(id: number)
