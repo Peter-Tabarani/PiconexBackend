@@ -110,7 +110,6 @@ func GetSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	w.Write(jsonBytes)
 }
 
-// FAILING: Invalid ID
 func GetSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	idStr := vars["id"]
@@ -283,10 +282,10 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 }
 
 type UpdateSpecificDocumentationRequest struct {
-	Date       string `json:"date"`        // "YYYY-MM-DD"
-	Time       string `json:"time"`        // "HH:MM:SS"
-	FileBase64 string `json:"file_base64"` // base64-encoded file blob
-	DocType    string `json:"doc_type"`    // enum('trad','al','in')
+	Date       string `json:"date"`
+	Time       string `json:"time"`
+	FileBase64 string `json:"file_base64"`
+	DocType    string `json:"doc_type"`
 	StudentID  int    `json:"student_id"`
 }
 
@@ -323,27 +322,24 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Update activity (date, time)
-	activityUpdate := `UPDATE activity SET date=?, time=? WHERE activity_id=?`
-	_, err = tx.Exec(activityUpdate, req.Date, req.Time, activityID)
+	// Update activity
+	_, err = tx.Exec(`UPDATE activity SET date=?, time=? WHERE activity_id=?`, req.Date, req.Time, activityID)
 	if err != nil {
 		tx.Rollback()
 		http.Error(w, "Failed to update activity: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Update documentation (file)
-	docUpdate := `UPDATE documentation SET file=? WHERE activity_id=?`
-	_, err = tx.Exec(docUpdate, fileBytes, activityID)
+	// Update documentation
+	_, err = tx.Exec(`UPDATE documentation SET file=? WHERE activity_id=?`, fileBytes, activityID)
 	if err != nil {
 		tx.Rollback()
 		http.Error(w, "Failed to update documentation: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Update specific_documentation (doc_type, student id)
-	specDocUpdate := `UPDATE specific_documentation SET doc_type=?, id=? WHERE activity_id=?`
-	_, err = tx.Exec(specDocUpdate, req.DocType, req.StudentID, activityID)
+	// Update specific_documentation
+	_, err = tx.Exec(`UPDATE specific_documentation SET doc_type=?, id=? WHERE activity_id=?`, req.DocType, req.StudentID, activityID)
 	if err != nil {
 		tx.Rollback()
 		http.Error(w, "Failed to update specific documentation: "+err.Error(), http.StatusInternalServerError)

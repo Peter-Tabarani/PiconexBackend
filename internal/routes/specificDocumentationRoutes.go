@@ -22,7 +22,7 @@ func RegisterSpecificDocumentationRoutes(router *mux.Router, db *sql.DB) {
 		}
 	})).Methods("GET", "POST", "OPTIONS")
 
-	router.HandleFunc("/specific-documentation/{id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/specific-documentation/{activity_id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
 			handlers.GetSpecificDocumentationByID(db, w, r)
