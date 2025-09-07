@@ -73,6 +73,7 @@ func GetPointsOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonBytes)
 }
 
+// FAILING
 func GetPointOfContactByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	activityIDStr := vars["activity_id"]
@@ -359,7 +360,7 @@ func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = db.Exec(`
-		UPDATE point_of_contact 
+		UPDATE point_of_contact
 		SET event_date=?, event_time=?, event_type=?, student_id=?, admin_id=?
 		WHERE activity_id=?`,
 		req.EventDate, req.EventTime, req.EventType, req.StudentID, req.AdminID, activityID,

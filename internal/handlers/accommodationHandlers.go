@@ -168,6 +168,7 @@ func CreateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// PROBLEM: When deleting an accommodation that isn't there, it submits a success message
 func DeleteAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -200,6 +201,7 @@ func DeleteAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Accommodation deleted successfully"})
 }
 
+// FAILING
 func UpdateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]

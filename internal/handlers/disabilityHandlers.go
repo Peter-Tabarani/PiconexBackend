@@ -52,6 +52,7 @@ func GetDisabilities(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonBytes)
 }
 
+// FAILING
 func GetDisabilityByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	idStr := vars["disability_id"]
@@ -205,6 +206,7 @@ func DeleteDisability(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Disability deleted successfully"})
 }
 
+// PROBLEM: Shouldn't have to specify disability_id twice
 func UpdateDisability(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]

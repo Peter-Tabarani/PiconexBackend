@@ -52,6 +52,7 @@ func GetDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonBytes)
 }
 
+// FAILING
 func GetDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	idStr := vars["activity_id"]

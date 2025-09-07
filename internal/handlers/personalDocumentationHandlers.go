@@ -55,6 +55,7 @@ func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	w.Write(jsonBytes)
 }
 
+// FAILING
 func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	idStr := vars["activity_id"]
@@ -100,6 +101,7 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	w.Write(jsonBytes)
 }
 
+// PROBLEM: Inconsistent parameter names
 type CreatePersonalDocumentationRequest struct {
 	AdminID    int    `json:"admin_id"`    // maps to personal_documentation.id
 	Date       string `json:"date"`        // format: "YYYY-MM-DD"
@@ -107,6 +109,7 @@ type CreatePersonalDocumentationRequest struct {
 	FileBase64 string `json:"file_base64"` // base64-encoded file blob
 }
 
+// FAILING: Gave an success message, added to activity and documentation, but didn't add to personal-documentation
 func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -179,6 +182,7 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	})
 }
 
+// FAILING
 func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -226,6 +230,7 @@ type UpdatePersonalDocumentationRequest struct {
 	AdminID    int    `json:"admin_id"`    // personal_documentation.id
 }
 
+// FAILING
 func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
