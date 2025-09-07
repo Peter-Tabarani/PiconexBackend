@@ -3,7 +3,6 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -17,6 +16,11 @@ import (
 )
 
 func GetAccommodations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
 	query := `
         SELECT accommodation_id, name, description
         FROM accommodation
@@ -30,7 +34,7 @@ func GetAccommodations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var accommodations []models.Accommodation
+	accommodations := make([]models.Accommodation, 0)
 	for rows.Next() {
 		var am models.Accommodation
 		if err := rows.Scan(&am.Accommodation_ID, &am.Name, &am.Description); err != nil {
@@ -51,6 +55,11 @@ func GetAccommodations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
 	vars := mux.Vars(r)
 	idStr, ok := vars["id"]
 	if !ok {
@@ -88,6 +97,11 @@ func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
 	vars := mux.Vars(r)
 	idStr := vars["id"]
 
@@ -114,7 +128,7 @@ func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	}
 	defer rows.Close()
 
-	var accommodations []models.Accommodation
+	accommodations := make([]models.Accommodation, 0)
 	for rows.Next() {
 		var a models.Accommodation
 		if err := rows.Scan(&a.Accommodation_ID, &a.Name, &a.Description); err != nil {
@@ -134,95 +148,141 @@ func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	utils.WriteJSON(w, http.StatusOK, accommodations)
 }
 
-type CreateAccommodationRequest struct {
-	Accommodation models.Accommodation `json:"accommodation"`
-}
-
 func CreateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	var req CreateAccommodationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+	var a models.Accommodation
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&a); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+		log.Println("JSON decode error:", err)
 		return
 	}
 
-	res, err := db.Exec(
+	if a.Name == "" || a.Description == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields: name or description")
+		return
+	}
+
+	res, err := db.ExecContext(r.Context(),
 		"INSERT INTO accommodation (name, description) VALUES (?, ?)",
-		req.Accommodation.Name, req.Accommodation.Description,
+		a.Name, a.Description,
 	)
 	if err != nil {
-		http.Error(w, "Failed to insert accommodation: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert accommodation")
+		log.Println("DB insert error:", err)
 		return
 	}
 
-	lastID, _ := res.LastInsertId()
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	lastID, err := res.LastInsertId()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get last insert ID")
+		log.Println("LastInsertId error:", err)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{
 		"message":          "Accommodation created successfully",
 		"accommodation_id": lastID,
 	})
 }
 
-// PROBLEM: When deleting an accommodation that isn't there, it submits a success message
 func DeleteAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "DELETE, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
+	if r.Method != http.MethodDelete {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
 
 	vars := mux.Vars(r)
 	idStr := vars["id"]
-	id, err := strconv.Atoi(idStr)
+	accomID, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid accommodation ID", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Invalid accommodation ID")
+		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
-	// Step 1: Nullify any foreign keys referencing this accommodation (if needed)
-	// For example, stu_accom references accommodation_id
-	_, err = db.Exec(`UPDATE stu_accom SET accommodation_id = NULL WHERE accommodation_id = ?`, id)
+	res, err := db.ExecContext(r.Context(), "DELETE FROM accommodation WHERE accommodation_id = ?", accomID)
 	if err != nil {
-		http.Error(w, "Failed to update stu_accom: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete accommodation")
+		log.Println("DB delete error:", err)
 		return
 	}
 
-	// Step 2: Delete from accommodation
-	_, err = db.Exec(`DELETE FROM accommodation WHERE accommodation_id = ?`, id)
+	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		http.Error(w, "Failed to delete accommodation: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]string{"message": "Accommodation deleted successfully"})
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Accommodation not found")
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Accommodation deleted successfully",
+	})
 }
 
-// FAILING
 func UpdateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
 	vars := mux.Vars(r)
-	id := vars["id"]
+	idStr := vars["id"]
+	accommodationID, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid accommodation ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
 
 	var a models.Accommodation
-	err := json.NewDecoder(r.Body).Decode(&a)
-	if err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&a); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+		log.Println("JSON decode error:", err)
 		return
 	}
 
-	// Update only fields that were sent
-	_, err = db.Exec(`
-		UPDATE accommodation
-		SET name = ?, description = ?
-		WHERE accommodation_id = ?`, a.Name, a.Description, id)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to update: %v", err), http.StatusInternalServerError)
+	if a.Name == "" || a.Description == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields: name or description")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "Accommodation updated successfully")
+	res, err := db.ExecContext(
+		r.Context(),
+		`UPDATE accommodation SET name = ?, description = ? WHERE accommodation_id = ?`,
+		a.Name, a.Description, accommodationID,
+	)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to update accommodation")
+		log.Println("DB update error:", err)
+		return
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to check update result")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Accommodation not found")
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Accommodation updated successfully",
+	})
 }
