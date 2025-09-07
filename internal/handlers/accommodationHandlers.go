@@ -4,10 +4,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/utils"
+
 	"github.com/gorilla/mux"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -15,80 +18,83 @@ import (
 
 func GetAccommodations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	query := `
-		SELECT
-			am.accommodation_id, am.name, am.description
-		FROM accommodation am
-	`
+        SELECT accommodation_id, name, description
+        FROM accommodation
+    `
 
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(r.Context(), query)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch accommodations")
+		log.Println("DB query error:", err)
 		return
 	}
 	defer rows.Close()
 
 	var accommodations []models.Accommodation
-
 	for rows.Next() {
 		var am models.Accommodation
-		err := rows.Scan(
-			&am.Accommodation_ID, &am.Name, &am.Description,
-		)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if err := rows.Scan(&am.Accommodation_ID, &am.Name, &am.Description); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse accommodations")
+			log.Println("Row scan error:", err)
 			return
 		}
 		accommodations = append(accommodations, am)
 	}
 
-	jsonBytes, err := json.MarshalIndent(accommodations, "", "    ") // Pretty print with 4 spaces indent
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Error reading accommodations")
+		log.Println("Rows error:", err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	utils.WriteJSON(w, http.StatusOK, accommodations)
 }
 
 func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	idStr := vars["id"] // match the route
+	idStr, ok := vars["id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing accommodation ID")
+		return
+	}
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid accommodation ID", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Invalid accommodation ID")
+		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
 	query := `
-		SELECT accommodation_id, name, description
-		FROM accommodation
-		WHERE accommodation_id = ?
-	`
+        SELECT accommodation_id, name, description
+        FROM accommodation
+        WHERE accommodation_id = ?
+    `
 
 	var accom models.Accommodation
-	err = db.QueryRow(query, id).Scan(&accom.Accommodation_ID, &accom.Name, &accom.Description)
+	err = db.QueryRowContext(r.Context(), query, id).Scan(
+		&accom.Accommodation_ID, &accom.Name, &accom.Description,
+	)
 	if err == sql.ErrNoRows {
-		http.Error(w, "Accommodation not found", http.StatusNotFound)
+		utils.WriteError(w, http.StatusNotFound, "Accommodation not found")
 		return
 	} else if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch accommodation")
+		log.Println("DB query error:", err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(accom)
+	utils.WriteJSON(w, http.StatusOK, accom)
 }
 
 func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	idStr := vars["id"]
+
 	studentID, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid student ID", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
@@ -100,38 +106,32 @@ func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Req
 		WHERE sa.id = ?
 	`
 
-	rows, err := db.Query(query, studentID)
+	rows, err := db.QueryContext(r.Context(), query, studentID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch accommodations for student")
+		log.Println("DB query error:", err)
 		return
 	}
 	defer rows.Close()
 
 	var accommodations []models.Accommodation
-
 	for rows.Next() {
 		var a models.Accommodation
 		if err := rows.Scan(&a.Accommodation_ID, &a.Name, &a.Description); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse accommodations")
+			log.Println("Row scan error:", err)
 			return
 		}
 		accommodations = append(accommodations, a)
 	}
 
-	if len(accommodations) == 0 {
-		http.Error(w, "No accommodations found for the student", http.StatusNotFound)
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Error reading accommodations")
+		log.Println("Rows error:", err)
 		return
 	}
 
-	jsonBytes, err := json.MarshalIndent(accommodations, "", "    ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	utils.WriteJSON(w, http.StatusOK, accommodations)
 }
 
 type CreateAccommodationRequest struct {

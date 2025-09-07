@@ -207,6 +207,8 @@ func GetStudentsByName(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonBytes)
 }
 
+// PROBLEM: Should have a GetPinnedStudentsByAdminID
+
 type CreateStudentRequest struct {
 	Person  models.Person  `json:"person"`
 	Student models.Student `json:"student"`
@@ -317,41 +319,24 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Student deleted successfully"})
 }
 
-// PROBLEM: Need to standardize printing success and error messages
 func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	var updates map[string]interface{}
-	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
-		return
-	}
-
-	if len(updates) == 0 {
-		http.Error(w, "No fields to update", http.StatusBadRequest)
-		return
-	}
-
-	query := "UPDATE person SET "
-	args := []interface{}{}
-	first := true
-
-	for field, value := range updates {
-		if !first {
-			query += ", "
-		}
-		query += field + " = ?"
-		args = append(args, value)
-		first = false
-	}
-
-	query += " WHERE id = ?"
-	args = append(args, id)
-
-	_, err := db.Exec(query, args...)
+	var s models.Student
+	err := json.NewDecoder(r.Body).Decode(&s)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to update student: %v", err), http.StatusInternalServerError)
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+		return
+	}
+
+	// Update only fields that were sent (optional: dynamic SQL builder)
+	_, err = db.Exec(`
+		UPDATE person
+		SET gender = ?
+		WHERE id = ?`, s.Gender, id)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to update: %v", err), http.StatusInternalServerError)
 		return
 	}
 
