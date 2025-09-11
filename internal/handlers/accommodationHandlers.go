@@ -16,7 +16,7 @@ import (
 )
 
 func GetAccommodations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error Message For Any Command That Is Not GET
+	// Error Message For Any Request That Is Not GET
 	if r.Method != http.MethodGet {
 		utils.WriteError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
@@ -44,7 +44,7 @@ func GetAccommodations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Reads Each Row Returned By The Database
 	for rows.Next() {
 
-		// Empty Variable For Accommodations Struct
+		// Empty Variable For Accommodation Struct
 		var am models.Accommodation
 
 		// Reads The Current Data Into Fields Of (am) Variable
