@@ -16,41 +16,56 @@ import (
 )
 
 func GetAccommodations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error Message For Any Command That Is Not GET
 	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
 
+	// All Data Being Selected For This GET Command
 	query := `
         SELECT accommodation_id, name, description
         FROM accommodation
     `
-
+	// Executes Written SQL
 	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error Message If QueryContext Fails
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch accommodations")
+		utils.WriteError(w, http.StatusInternalServerError, "Failed To Fetch Accommodations")
 		log.Println("DB query error:", err)
 		return
 	}
 	defer rows.Close()
 
+	// Creates An Empty Slice To Obtain Results
 	accommodations := make([]models.Accommodation, 0)
+
+	// Reads Each Row Returned By The Database
 	for rows.Next() {
+
+		// Empty Variable For Accommodations Struct
 		var am models.Accommodation
+
+		// Reads The Current Data Into Fields Of (am) Variable
 		if err := rows.Scan(&am.Accommodation_ID, &am.Name, &am.Description); err != nil {
-			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse accommodations")
+			utils.WriteError(w, http.StatusInternalServerError, "Failed To Read Accommodations")
 			log.Println("Row scan error:", err)
 			return
 		}
+
+		// Adds The Obtained Data To The Slice
 		accommodations = append(accommodations, am)
 	}
 
+	// Checks For Errors During Iteration Such As Network Interruptions and Driver Errors
 	if err := rows.Err(); err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Error reading accommodations")
+		utils.WriteError(w, http.StatusInternalServerError, "Error During Iteration")
 		log.Println("Rows error:", err)
 		return
 	}
 
+	// Writes The Slice As JSON & Sends A HTTP 200 Response Code
 	utils.WriteJSON(w, http.StatusOK, accommodations)
 }
 
