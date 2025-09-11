@@ -16,85 +16,94 @@ import (
 )
 
 func GetAccommodations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error Message For Any Request That Is Not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
-		return
-	}
-
-	// All Data Being Selected For This GET Command
-	query := `
-        SELECT accommodation_id, name, description
-        FROM accommodation
-    `
-	// Executes Written SQL
-	rows, err := db.QueryContext(r.Context(), query)
-
-	// Error Message If QueryContext Fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed To Fetch Accommodations")
-		log.Println("DB query error:", err)
-		return
-	}
-	defer rows.Close()
-
-	// Creates An Empty Slice To Obtain Results
-	accommodations := make([]models.Accommodation, 0)
-
-	// Reads Each Row Returned By The Database
-	for rows.Next() {
-
-		// Empty Variable For Accommodation Struct
-		var am models.Accommodation
-
-		// Reads The Current Data Into Fields Of (am) Variable
-		if err := rows.Scan(&am.Accommodation_ID, &am.Name, &am.Description); err != nil {
-			utils.WriteError(w, http.StatusInternalServerError, "Failed To Read Accommodations")
-			log.Println("Row scan error:", err)
-			return
-		}
-
-		// Adds The Obtained Data To The Slice
-		accommodations = append(accommodations, am)
-	}
-
-	// Checks For Errors During Iteration Such As Network Interruptions and Driver Errors
-	if err := rows.Err(); err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Error During Iteration")
-		log.Println("Rows error:", err)
-		return
-	}
-
-	// Writes The Slice As JSON & Sends A HTTP 200 Response Code
-	utils.WriteJSON(w, http.StatusOK, accommodations)
-}
-
-func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not GET
 	if r.Method != http.MethodGet {
 		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
+	// All data being selected for this GET command
+	query := `
+        SELECT accommodation_id, name, description
+        FROM accommodation
+    `
+	// Executes written SQL
+	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error message if QueryContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain accommodations")
+		log.Println("DB query error:", err)
+		return
+	}
+	defer rows.Close()
+
+	// Creates an empty slice to obtain results
+	accommodations := make([]models.Accommodation, 0)
+
+	// Reads each row returned by the database
+	for rows.Next() {
+
+		// Empty variable for accommodation struct
+		var am models.Accommodation
+
+		// Reads the current data into fields of "am" variable
+		if err := rows.Scan(&am.Accommodation_ID, &am.Name, &am.Description); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to read accommodations")
+			log.Println("Row scan error:", err)
+			return
+		}
+
+		// Adds the obtained data to the slice
+		accommodations = append(accommodations, am)
+	}
+
+	// Checks for errors during iteration such as network interruptions and driver errors
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
+		log.Println("Rows error:", err)
+		return
+	}
+
+	// Writes the slice as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, accommodations)
+}
+
+func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Extracts route parameters
 	vars := mux.Vars(r)
+
+	// Obtains ID from path parameters
 	idStr, ok := vars["id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing accommodation ID")
 		return
 	}
 
+	// Converts the string ID into a integer
 	id, err := strconv.Atoi(idStr)
+
+	// Error message if accommodation ID does not exist
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid accommodation ID")
 		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
+	// Data being selected with a WHERE command to only select one record by ID
 	query := `
         SELECT accommodation_id, name, description
         FROM accommodation
         WHERE accommodation_id = ?
     `
 
+	//
 	var accom models.Accommodation
 	err = db.QueryRowContext(r.Context(), query, id).Scan(
 		&accom.Accommodation_ID, &accom.Name, &accom.Description,
