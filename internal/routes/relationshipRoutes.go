@@ -71,7 +71,7 @@ func RegisterRelationshipRoutes(router *mux.Router, db *sql.DB) {
 		}
 	})).Methods("GET", "POST", "OPTIONS")
 
-	router.HandleFunc("/poc-admin/{activity_id}/{admin_id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/poc-admin/{activity_id}/{id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
 		handlers.DeletePocAdmin(db, w, r)
 	})).Methods("DELETE", "OPTIONS")
 }

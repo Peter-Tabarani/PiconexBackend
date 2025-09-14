@@ -3,231 +3,345 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
-	"github.com/gorilla/mux"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/utils"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/gorilla/mux"
 )
 
 func GetDisabilities(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	query := `
-		SELECT
-			ds.disability_id, ds.name, ds.description
-		FROM disability ds
-	`
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
 
-	rows, err := db.Query(query)
+	// All data being selected for this GET command
+	query := `SELECT disability_id, name, description FROM disability`
+
+	// Executes written SQL
+	rows, err := db.QueryContext(r.Context(), query)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain disabilities")
+		log.Println("DB query error:", err)
 		return
 	}
 	defer rows.Close()
 
-	var disabilities []models.Disability
+	// Creates an empty slice to obtain results
+	disabilities := make([]models.Disability, 0)
 
+	// Reads each row returned by the database
 	for rows.Next() {
-		var ds models.Disability
-		err := rows.Scan(
-			&ds.Disability_ID, &ds.Name, &ds.Description,
-		)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		// Empty variable for disability struct
+		var d models.Disability
+
+		// Parses the current data into fields of "d" variable
+		if err := rows.Scan(&d.Disability_ID, &d.Name, &d.Description); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse disabilities")
+			log.Println("Row scan error:", err)
 			return
 		}
-		disabilities = append(disabilities, ds)
+
+		// Adds the obtained data to the slice
+		disabilities = append(disabilities, d)
 	}
 
-	jsonBytes, err := json.MarshalIndent(disabilities, "", "    ") // Pretty print with 4 spaces indent
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// Checks for errors during iteration such as network interruptions and driver errors
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
+		log.Println("Rows error:", err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	// Writes the slice as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, disabilities)
 }
 
-// FAILING
 func GetDisabilityByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	idStr := vars["disability_id"]
-
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid disability ID", http.StatusBadRequest)
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	query := `
-		SELECT disability_id, name, description
-		FROM disability
-		WHERE disability_id = ?
-	`
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
+	idStr, ok := vars["disability_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing disability ID")
+		return
+	}
 
-	var dis models.Disability
-	err = db.QueryRow(query, id).Scan(&dis.Disability_ID, &dis.Name, &dis.Description)
+	// Converts the "disability_id" string to an integer
+	disabilityID, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid disability ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// All data being selected for this GET command
+	query := `SELECT disability_id, name, description FROM disability WHERE disability_id = ?`
+
+	// Empty variable for disability struct
+	var d models.Disability
+
+	// Executes written SQL and retrieves only one row
+	err = db.QueryRowContext(r.Context(), query, disabilityID).Scan(&d.Disability_ID, &d.Name, &d.Description)
 	if err == sql.ErrNoRows {
-		http.Error(w, "Disability not found", http.StatusNotFound)
+		utils.WriteError(w, http.StatusNotFound, "Disability not found")
 		return
 	} else if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch disability")
+		log.Println("DB query error:", err)
 		return
 	}
 
-	jsonBytes, err := json.MarshalIndent(dis, "", "    ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	// Writes the struct as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, d)
 }
 
 func GetDisabilitiesByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	idStr := vars["id"]
-	studentID, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid student ID", http.StatusBadRequest)
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+
+	// Converts the "id" string to an integer
+	studentID, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// All data being selected for this GET command
 	query := `
-		SELECT
-			d.disability_id, d.name, d.description
+		SELECT d.disability_id, d.name, d.description
 		FROM stu_dis sd
 		JOIN disability d ON sd.disability_id = d.disability_id
 		WHERE sd.id = ?
 	`
 
-	rows, err := db.Query(query, studentID)
+	// Executes written SQL
+	rows, err := db.QueryContext(r.Context(), query, studentID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain disabilities for student")
+		log.Println("DB query error:", err)
 		return
 	}
 	defer rows.Close()
 
-	var disabilities []models.Disability
+	// Creates an empty slice to obtain results
+	disabilities := make([]models.Disability, 0)
 
+	// Reads each row returned by the database
 	for rows.Next() {
+		// Empty variable for disability struct
 		var d models.Disability
+
+		// Parses the current data into fields of "d" variable
 		if err := rows.Scan(&d.Disability_ID, &d.Name, &d.Description); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse disabilities")
+			log.Println("Row scan error:", err)
 			return
 		}
+
+		// Adds the obtained data to the slice
 		disabilities = append(disabilities, d)
 	}
 
-	if len(disabilities) == 0 {
-		http.Error(w, "No disabilities found for the student", http.StatusNotFound)
+	// Checks for errors during iteration such as network interruptions and driver errors
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
+		log.Println("Rows error:", err)
 		return
 	}
 
-	jsonBytes, err := json.MarshalIndent(disabilities, "", "    ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
-}
-
-type CreateDisabilityRequest struct {
-	Disability models.Disability `json:"disability"`
+	// Writes the slice as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, disabilities)
 }
 
 func CreateDisability(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not POST
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	var req CreateDisabilityRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+	// Empty variable for disability struct
+	var d models.Disability
+
+	// Decodes JSON body from the request into "d" variable
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
+	if err := decoder.Decode(&d); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+		log.Println("JSON decode error:", err)
 		return
 	}
 
-	res, err := db.Exec(
+	// Validates required fields
+	if d.Name == "" || d.Description == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields: name or description")
+		return
+	}
+
+	// Executes written SQL to insert a new disability
+	res, err := db.ExecContext(r.Context(),
 		"INSERT INTO disability (name, description) VALUES (?, ?)",
-		req.Disability.Name, req.Disability.Description,
+		d.Name, d.Description,
 	)
 	if err != nil {
-		http.Error(w, "Failed to insert disability: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert disability")
+		log.Println("DB insert error:", err)
 		return
 	}
 
-	lastID, _ := res.LastInsertId()
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	// Gets the ID of the newly inserted disability
+	lastID, err := res.LastInsertId()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get last insert ID")
+		log.Println("LastInsertId error:", err)
+		return
+	}
+
+	// Writes JSON response including the new ID & sends a HTTP 201 response code
+	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{
 		"message":       "Disability created successfully",
 		"disability_id": lastID,
 	})
 }
 
 func DeleteDisability(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "DELETE, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
+	// Error message for any request that is not DELETE
+	if r.Method != http.MethodDelete {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
 
+	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr := vars["id"]
-	id, err := strconv.Atoi(idStr)
+	idStr := vars["disability_id"]
+
+	// Converts the "disability_id" string to an integer
+	disabilityID, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid disability ID", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Invalid disability ID")
+		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
-	// Step 1: Nullify or remove references in stu_dis
-	_, err = db.Exec(`DELETE FROM stu_dis WHERE disability_id = ?`, id)
+	// Executes written SQL to delete any student references first
+	_, err = db.ExecContext(r.Context(), "DELETE FROM stu_dis WHERE disability_id = ?", disabilityID)
 	if err != nil {
-		http.Error(w, "Failed to update stu_dis: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete student references")
+		log.Println("DB delete error:", err)
 		return
 	}
 
-	// Step 2: Delete from disability
-	_, err = db.Exec(`DELETE FROM disability WHERE disability_id = ?`, id)
+	// Executes written SQL to delete the disability
+	res, err := db.ExecContext(r.Context(), "DELETE FROM disability WHERE disability_id = ?", disabilityID)
 	if err != nil {
-		http.Error(w, "Failed to delete disability: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete disability")
+		log.Println("DB delete error:", err)
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]string{"message": "Disability deleted successfully"})
+	// Gets the number of rows affected by the delete
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Disability not found")
+		return
+	}
+
+	// Writes JSON response confirming deletion & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Disability deleted successfully",
+	})
 }
 
-// PROBLEM: Shouldn't have to specify disability_id twice
 func UpdateDisability(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not PUT
+	if r.Method != http.MethodPut {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	id := vars["id"]
+	idStr := vars["disability_id"]
 
+	// Converts the "disability_id" string to an integer
+	disabilityID, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid disability ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// Empty variable for disability struct
 	var d models.Disability
-	err := json.NewDecoder(r.Body).Decode(&d)
-	if err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
+
+	// Decodes JSON body from the request into "d" variable
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
+	if err := decoder.Decode(&d); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+		log.Println("JSON decode error:", err)
 		return
 	}
 
-	// Update only fields that were sent
-	_, err = db.Exec(`
-		UPDATE disability
-		SET name = ?, description = ?
-		WHERE disability_id = ?`, d.Name, d.Description, id)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to update: %v", err), http.StatusInternalServerError)
+	// Validates required fields
+	if d.Name == "" || d.Description == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields: name or description")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "Disability updated successfully")
+	// Executes written SQL to update the disability
+	res, err := db.ExecContext(r.Context(),
+		"UPDATE disability SET name = ?, description = ? WHERE disability_id = ?",
+		d.Name, d.Description, disabilityID,
+	)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to update disability")
+		log.Println("DB update error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the update
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to check update result")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were updated
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Disability not found")
+		return
+	}
+
+	// Writes JSON response confirming update & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Disability updated successfully",
+	})
 }

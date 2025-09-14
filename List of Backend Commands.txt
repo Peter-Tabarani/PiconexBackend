@@ -45,7 +45,6 @@ MISCELLANEOUS
 Student[] getPinnedByAdminID(id: number)
 Student[] getStudentsByName(name: string)
 Activity[] getActivitiesByDate(date: Date)
-Activity[] getActivityByStudentID(id: number)
 SpecificDocumentation[] getSpecificDocumentationByStudentID(id: number)
 PointOfContact[] getMeetingsByAdminIDAndDate(id: number, date: Date)
 PointofContact[] getPastMeetingsByStudentIDAndAdminID(id(student): number, id(admin): number)

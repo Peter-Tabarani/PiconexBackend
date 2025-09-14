@@ -15,7 +15,7 @@ func RegisterDocumentationRoutes(router *mux.Router, db *sql.DB) {
 		handlers.GetDocumentations(db, w, r)
 	})).Methods("GET", "OPTIONS")
 
-	router.HandleFunc("/documentation/{id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/documentation/{activity_id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
 		handlers.GetDocumentationByID(db, w, r)
 	})).Methods("GET", "OPTIONS")
 }

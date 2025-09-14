@@ -22,7 +22,7 @@ func RegisterPointOfContactRoutes(router *mux.Router, db *sql.DB) {
 		}
 	})).Methods("GET", "POST", "OPTIONS")
 
-	router.HandleFunc("/point-of-contact/{id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/point-of-contact/{activity_id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
 			handlers.GetPointOfContactByID(db, w, r)

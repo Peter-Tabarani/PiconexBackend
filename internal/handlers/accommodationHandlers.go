@@ -45,17 +45,17 @@ func GetAccommodations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 
 		// Empty variable for accommodation struct
-		var am models.Accommodation
+		var a models.Accommodation
 
-		// Reads the current data into fields of "am" variable
-		if err := rows.Scan(&am.Accommodation_ID, &am.Name, &am.Description); err != nil {
-			utils.WriteError(w, http.StatusInternalServerError, "Failed to read accommodations")
+		// Parses the current data into fields of "am" variable
+		if err := rows.Scan(&a.Accommodation_ID, &a.Name, &a.Description); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse accommodations")
 			log.Println("Row scan error:", err)
 			return
 		}
 
 		// Adds the obtained data to the slice
-		accommodations = append(accommodations, am)
+		accommodations = append(accommodations, a)
 	}
 
 	// Checks for errors during iteration such as network interruptions and driver errors
@@ -79,15 +79,15 @@ func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 
-	// Reads the "id" value from the path variables
-	idStr, ok := vars["id"]
+	// Reads the "accommodation_id" value from the path variables
+	idStr, ok := vars["accommodation_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing accommodation ID")
 		return
 	}
 
 	// Converts the "id" string to an integer
-	id, err := strconv.Atoi(idStr)
+	accommodationID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid accommodation ID")
 		log.Println("Invalid ID parse error:", err)
@@ -102,11 +102,11 @@ func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
     `
 
 	// Empty variable for accommodation struct
-	var accom models.Accommodation
+	var a models.Accommodation
 
 	// Executes written SQL and retrieves only one row
-	err = db.QueryRowContext(r.Context(), query, id).Scan(
-		&accom.Accommodation_ID, &accom.Name, &accom.Description,
+	err = db.QueryRowContext(r.Context(), query, accommodationID).Scan(
+		&a.Accommodation_ID, &a.Name, &a.Description,
 	)
 
 	// Error message if no rows are found
@@ -121,7 +121,7 @@ func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Writes the struct as JSON & sends a HTTP 200 response code
-	utils.WriteJSON(w, http.StatusOK, accom)
+	utils.WriteJSON(w, http.StatusOK, a)
 }
 
 func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
@@ -173,9 +173,9 @@ func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Req
 		// Empty variable for accommodation struct
 		var a models.Accommodation
 
-		// Reads the current data into fields of "a" variable
+		// Parses the current data into fields of "a" variable
 		if err := rows.Scan(&a.Accommodation_ID, &a.Name, &a.Description); err != nil {
-			utils.WriteError(w, http.StatusInternalServerError, "Failed to read accommodations")
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse accommodations")
 			log.Println("Row scan error:", err)
 			return
 		}
@@ -207,9 +207,7 @@ func CreateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Decodes JSON body from the request into "a" variable
 	decoder := json.NewDecoder(r.Body)
-
-	// Prevents extra unexpected fields
-	decoder.DisallowUnknownFields()
+	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
 	if err := decoder.Decode(&a); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
 		log.Println("JSON decode error:", err)
@@ -260,11 +258,11 @@ func DeleteAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 
-	// Reads the "id" value from the path variables
-	idStr := vars["id"]
+	// Reads the "accommodation_id" value from the path variables
+	idStr := vars["accommodation_id"]
 
-	// Converts the "id" string to an integer
-	accomID, err := strconv.Atoi(idStr)
+	// Converts the "accommodation_id" string to an integer
+	accommodationID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid accommodation ID")
 		log.Println("Invalid ID parse error:", err)
@@ -274,7 +272,7 @@ func DeleteAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Executes written SQL to delete the accommodation
 	res, err := db.ExecContext(r.Context(),
 		"DELETE FROM accommodation WHERE accommodation_id = ?",
-		accomID,
+		accommodationID,
 	)
 	// Error message if ExecContext fails
 	if err != nil {
@@ -314,10 +312,10 @@ func UpdateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 
-	// Reads the "id" value from the path variables
-	idStr := vars["id"]
+	// Reads the "accommodation_id" value from the path variables
+	idStr := vars["accommodation_id"]
 
-	// Converts the "id" string to an integer
+	// Converts the "accommodation_id" string to an integer
 	accommodationID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid accommodation ID")
@@ -328,7 +326,7 @@ func UpdateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Empty variable for accommodation struct
 	var a models.Accommodation
 
-	// Decodes JSON body from the request into "a" variable
+	// Decodes JSON body from the request into "a"
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
 	if err := decoder.Decode(&a); err != nil {
@@ -358,6 +356,7 @@ func UpdateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Gets the number of rows affected by the update
 	rowsAffected, err := res.RowsAffected()
+
 	// Error message if RowsAffected fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to check update result")

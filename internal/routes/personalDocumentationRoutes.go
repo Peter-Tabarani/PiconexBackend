@@ -22,7 +22,7 @@ func RegisterPersonalDocumentationRoutes(router *mux.Router, db *sql.DB) {
 		}
 	})).Methods("GET", "POST", "OPTIONS")
 
-	router.HandleFunc("/personal-documentation/{id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/personal-documentation/{activity_id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
 			handlers.GetPersonalDocumentationByID(db, w, r)

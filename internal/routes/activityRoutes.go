@@ -21,8 +21,4 @@ func RegisterActivityRoutes(router *mux.Router, db *sql.DB) {
 	router.HandleFunc("/activity/date/{date}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
 		handlers.GetActivitiesByDate(db, w, r)
 	})).Methods("GET", "OPTIONS")
-
-	router.HandleFunc("/activity/student/{id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
-		handlers.GetActivitiesByStudentID(db, w, r)
-	})).Methods("GET", "OPTIONS")
 }

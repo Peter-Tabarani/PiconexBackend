@@ -2,195 +2,191 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/utils"
 	"github.com/gorilla/mux"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 func GetActivities(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// All data being selected for this GET command
 	query := `
 		SELECT
-			ac.activity_id, ac.date, ac.time
-		FROM activity ac
+			activity_id, date, time
+		FROM activity
 	`
 
-	rows, err := db.Query(query)
+	// Executes written SQL
+	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error message if QueryContext fails
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain activities")
+		log.Println("DB query error:", err)
 		return
 	}
 	defer rows.Close()
 
-	var activities []models.Activity
+	// Creates an empty slice to obtain results
+	activities := make([]models.Activity, 0)
 
+	// Reads each row returned by the database
 	for rows.Next() {
-		var ac models.Activity
-		err := rows.Scan(
-			&ac.Activity_ID, &ac.Date, &ac.Time,
-		)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		// Empty variable for activitie struct
+		var a models.Activity
+
+		// Parses the current data into fields of "am" variable
+		if err := rows.Scan(&a.Activity_ID, &a.Date, &a.Time); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse activities")
+			log.Println("Row scan error:", err)
 			return
 		}
-		activities = append(activities, ac)
+
+		// Adds the obtained data to the slice
+		activities = append(activities, a)
 	}
 
-	jsonBytes, err := json.MarshalIndent(activities, "", "    ") // Pretty print with 4 spaces indent
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// Checks for errors during iteration such as network interruptions and driver errors
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
+		log.Println("Rows error:", err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	// Writes the slice as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, activities)
 }
 
 func GetActivityByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	idStr := vars["activity_id"]
-
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid activity ID", http.StatusBadRequest)
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	query := `
-		SELECT activity_id, date, time
-		FROM activity
-		WHERE activity_id = ?
-	`
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
 
-	var activity models.Activity
-	err = db.QueryRow(query, id).Scan(
-		&activity.Activity_ID,
-		&activity.Date,
-		&activity.Time,
+	// Reads the "activity_id" value from the path variables
+	idStr, ok := vars["activity_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
+		return
+	}
+
+	// Converts the "activityid" string to an integer
+	activityID, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// All data being selected for this GET command
+	query := `
+        SELECT activity_id, date, time
+        FROM activity
+        WHERE activity_id = ?
+    `
+
+	// Empty variable for activity struct
+	var a models.Activity
+
+	// Executes written SQL and retrieves only one row
+	err = db.QueryRowContext(r.Context(), query, activityID).Scan(
+		&a.Activity_ID, &a.Date, &a.Time,
 	)
 
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "Activity not found", http.StatusNotFound)
-		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+	// Error message if no rows are found
+	if err == sql.ErrNoRows {
+		utils.WriteError(w, http.StatusNotFound, "Activity not found")
+		return
+		// Error message if QueryRowContext or scan fails
+	} else if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch activity")
+		log.Println("DB query error:", err)
 		return
 	}
 
-	jsonBytes, err := json.MarshalIndent(activity, "", "    ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	// Writes the struct as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, a)
 }
 
 func GetActivitiesByDate(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	date := vars["date"] // expects format like "2025-06-01"
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
 
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
+
+	// Reads the "date" value from the path variables
+	date := vars["date"]
+
+	if date == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Date is required")
+		return
+	}
+
+	// All data being selected for this GET command
 	query := `
 		SELECT activity_id, date, time
 		FROM activity
 		WHERE date = ?
 	`
 
-	rows, err := db.Query(query, date)
+	// Executes written SQL
+	rows, err := db.QueryContext(r.Context(), query, date)
+
+	// Error message if QueryContext fails
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain activities")
+		log.Println("DB query error:", err)
 		return
 	}
 	defer rows.Close()
 
-	var activities []models.Activity
+	// Creates an empty slice to obtain results
+	activities := make([]models.Activity, 0)
 
+	// Reads each row returned by the database
 	for rows.Next() {
+
+		// Empty variable for activity struct
 		var a models.Activity
-		err := rows.Scan(&a.Activity_ID, &a.Date, &a.Time)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		activities = append(activities, a)
-	}
 
-	if err = rows.Err(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if len(activities) == 0 {
-		http.Error(w, "No activities found for the specified date", http.StatusNotFound)
-		return
-	}
-
-	jsonBytes, err := json.MarshalIndent(activities, "", "    ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
-}
-
-func GetActivitiesByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	idStr := vars["id"]
-	studentID, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid student ID", http.StatusBadRequest)
-		return
-	}
-
-	query := `
-		SELECT
-			a.activity_id, a.date, a.time
-		FROM specific_documentation sd
-		JOIN activity a ON sd.activity_id = a.activity_id
-		WHERE sd.id = ?
-	`
-
-	rows, err := db.Query(query, studentID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	var activities []models.Activity
-
-	for rows.Next() {
-		var a models.Activity
+		// Parses the current data into fields of "a" variable
 		if err := rows.Scan(&a.Activity_ID, &a.Date, &a.Time); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse activities")
+			log.Println("Row scan error:", err)
 			return
 		}
+
+		// Adds the obtained data to the slice
 		activities = append(activities, a)
 	}
 
-	if len(activities) == 0 {
-		http.Error(w, "No activities found for the student", http.StatusNotFound)
+	// Checks for errors during iteration such as network interruptions and driver errors
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
+		log.Println("Rows error:", err)
 		return
 	}
 
-	jsonBytes, err := json.MarshalIndent(activities, "", "    ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	// Writes the slice as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, activities)
 }

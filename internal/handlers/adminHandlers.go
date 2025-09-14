@@ -3,14 +3,26 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/utils"
+
 	"github.com/gorilla/mux"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 func GetAdmins(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// All data being selected for this GET command
 	query := `
 		SELECT
 			p.id, p.first_name, p.preferred_name, p.middle_name, p.last_name,
@@ -20,284 +32,304 @@ func GetAdmins(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		JOIN person p ON a.id = p.id
 	`
 
-	rows, err := db.Query(query)
+	// Executes written SQL
+	rows, err := db.QueryContext(r.Context(), query)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain admins")
+		log.Println("DB query error:", err)
 		return
 	}
 	defer rows.Close()
 
-	var admins []models.Admin
+	// Creates an empty slice to obtain results
+	admins := make([]models.Admin, 0)
 
+	// Reads each row returned by the database
 	for rows.Next() {
 		var a models.Admin
-		err := rows.Scan(
+		// Parses the current data into fields of "a" variable
+		if err := rows.Scan(
 			&a.ID, &a.FirstName, &a.PreferredName, &a.MiddleName, &a.LastName,
 			&a.Email, &a.PhoneNumber, &a.Pronouns, &a.Sex, &a.Gender,
 			&a.Birthday, &a.Address, &a.City, &a.State, &a.ZipCode, &a.Country,
 			&a.Title,
-		)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse admins")
+			log.Println("Row scan error:", err)
 			return
 		}
+		// Adds the obtained data to the slice
 		admins = append(admins, a)
 	}
 
-	jsonBytes, err := json.MarshalIndent(admins, "", "    ") // Pretty print with 4 spaces indent
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// Checks for errors during iteration such as network interruptions and driver errors
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
+		log.Println("Rows error:", err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	// Writes the slice as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, admins)
 }
 
 func GetAdminByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	idStr := vars["id"]
-
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
+	idStr, ok := vars["id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID")
+		return
+	}
+
+	// Converts the "id" string to an integer
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// All data being selected for this GET command
 	query := `
 		SELECT
-			a.id,
-			p.first_name, p.preferred_name, p.middle_name, p.last_name,
+			p.id, p.first_name, p.preferred_name, p.middle_name, p.last_name,
 			p.email, p.phone_number, p.pronouns, p.sex, p.gender,
-			p.birthday, p.address, p.city, p.state, p.zip_code, p.country,
-			a.title
+			p.birthday, p.address, p.city, p.state, p.zip_code, p.country, a.title
 		FROM admin a
 		JOIN person p ON a.id = p.id
 		WHERE a.id = ?
 	`
 
-	var admin models.Admin
-	err = db.QueryRow(query, id).Scan(
-		&admin.ID,
-		&admin.FirstName,
-		&admin.PreferredName,
-		&admin.MiddleName,
-		&admin.LastName,
-		&admin.Email,
-		&admin.PhoneNumber,
-		&admin.Pronouns,
-		&admin.Sex,
-		&admin.Gender,
-		&admin.Birthday,
-		&admin.Address,
-		&admin.City,
-		&admin.State,
-		&admin.ZipCode,
-		&admin.Country,
-		&admin.Title, // extra field
+	// Empty variable for admin struct
+	var a models.Admin
+
+	// Executes written SQL and retrieves only one row
+	err = db.QueryRowContext(r.Context(), query, id).Scan(
+		&a.ID, &a.FirstName, &a.PreferredName, &a.MiddleName, &a.LastName,
+		&a.Email, &a.PhoneNumber, &a.Pronouns, &a.Sex, &a.Gender,
+		&a.Birthday, &a.Address, &a.City, &a.State, &a.ZipCode, &a.Country,
+		&a.Title,
 	)
 
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "Admin not found", http.StatusNotFound)
-		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+	// Error message if no rows are found
+	if err == sql.ErrNoRows {
+		utils.WriteError(w, http.StatusNotFound, "Admin not found")
+		return
+		// Error message if QueryRowContext or scan fails
+	} else if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch admin")
+		log.Println("DB query error:", err)
 		return
 	}
 
-	jsonBytes, err := json.MarshalIndent(admin, "", "    ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
-}
-
-type CreateAdminRequest struct {
-	Person models.Person `json:"person"`
-	Title  string        `json:"title"`
+	// Writes the struct as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, a)
 }
 
 func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not POST
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	var req CreateAdminRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+	// Empty variable for admin struct
+	var a models.Admin
+
+	// Decodes JSON body from the request into "a" variable
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
+	if err := decoder.Decode(&a); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+		log.Println("JSON decode error:", err)
 		return
 	}
 
-	tx, err := db.Begin()
-	if err != nil {
-		http.Error(w, "Failed to start transaction", http.StatusInternalServerError)
+	// Validates required fields
+	if a.FirstName == "" || a.LastName == "" || a.Email == "" || a.Title == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
-	personQuery := `
-		INSERT INTO person (
-			first_name, preferred_name, middle_name, last_name, email,
-			phone_number, pronouns, sex, gender, birthday,
-			address, city, state, zip_code, country
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`
-
-	res, err := tx.Exec(personQuery,
-		req.Person.FirstName, req.Person.PreferredName, req.Person.MiddleName, req.Person.LastName,
-		req.Person.Email, req.Person.PhoneNumber, req.Person.Pronouns, req.Person.Sex,
-		req.Person.Gender, req.Person.Birthday, req.Person.Address, req.Person.City,
-		req.Person.State, req.Person.ZipCode, req.Person.Country,
+	// Executes written SQL to insert a new person
+	res, err := db.ExecContext(r.Context(),
+		`INSERT INTO person (
+			first_name, preferred_name, middle_name, last_name,
+			email, phone_number, pronouns, sex, gender,
+			birthday, address, city, state, zip_code, country
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		a.FirstName, a.PreferredName, a.MiddleName, a.LastName,
+		a.Email, a.PhoneNumber, a.Pronouns, a.Sex, a.Gender,
+		a.Birthday, a.Address, a.City, a.State, a.ZipCode, a.Country,
 	)
 	if err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to insert into person: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert admin")
+		log.Println("DB insert error:", err)
 		return
 	}
 
-	personID, err := res.LastInsertId()
+	// Gets the ID of the newly inserted person
+	lastID, err := res.LastInsertId()
 	if err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to retrieve person ID: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get last insert ID")
+		log.Println("LastInsertId error:", err)
 		return
 	}
 
-	adminQuery := `
-		INSERT INTO admin (
-			id, title
-		) VALUES (?, ?)
-	`
-
-	_, err = tx.Exec(adminQuery, personID, req.Title)
+	// Executes written SQL to insert into admin table
+	_, err = db.ExecContext(r.Context(),
+		"INSERT INTO admin (id, title) VALUES (?, ?)",
+		lastID, a.Title,
+	)
 	if err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to insert into admin: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert admin title")
+		log.Println("DB insert error:", err)
 		return
 	}
 
-	if err := tx.Commit(); err != nil {
-		http.Error(w, "Failed to commit transaction: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	// Writes JSON response including the new ID & sends a HTTP 201 response code
+	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{
 		"message": "Admin created successfully",
-		"adminId": personID,
+		"adminId": lastID,
 	})
 }
 
 func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Only allow DELETE method
+	// Error message for any request that is not DELETE
 	if r.Method != http.MethodDelete {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
+	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	idStr := vars["id"]
-	adminID, err := strconv.Atoi(idStr)
+
+	// Converts the "id" string to an integer
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid admin ID", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
+		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
-	// Delete person record (will cascade to admin)
-	res, err := db.Exec("DELETE FROM person WHERE id = ?", adminID)
+	// Executes written SQL to delete the admin
+	res, err := db.ExecContext(r.Context(), "DELETE FROM person WHERE id = ?", id)
 	if err != nil {
-		http.Error(w, "Failed to delete admin: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete admin")
+		log.Println("DB delete error:", err)
 		return
 	}
 
+	// Gets the number of rows affected by the delete
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		http.Error(w, "Error checking deletion result: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
 		return
 	}
+
+	// Error message if no rows were deleted
 	if rowsAffected == 0 {
-		http.Error(w, "Admin not found", http.StatusNotFound)
+		utils.WriteError(w, http.StatusNotFound, "Admin not found")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Admin deleted successfully"})
-}
-
-type UpdateAdminRequest struct {
-	Person models.Person `json:"person"`
-	Title  string        `json:"title"`
+	// Writes JSON response confirming deletion & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Admin deleted successfully",
+	})
 }
 
 func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Only allow PUT method
+	// Error message for any request that is not PUT
 	if r.Method != http.MethodPut {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	// Get admin ID from URL
+	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	idStr := vars["id"]
-	adminID, err := strconv.Atoi(idStr)
+
+	// Converts the "id" string to an integer
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid admin ID", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
+		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
-	// Decode request body
-	var req UpdateAdminRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+	// Empty variable for admin struct
+	var a models.Admin
+
+	// Decodes JSON body from the request into "a" variable
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
+	if err := decoder.Decode(&a); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+		log.Println("JSON decode error:", err)
 		return
 	}
 
-	tx, err := db.Begin()
-	if err != nil {
-		http.Error(w, "Failed to start transaction", http.StatusInternalServerError)
+	// Validates required fields
+	if a.FirstName == "" || a.LastName == "" || a.Email == "" || a.Title == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
-	// Update person table
-	personUpdate := `
-		UPDATE person SET
+	// Executes written SQL to update the person data
+	_, err = db.ExecContext(r.Context(),
+		`UPDATE person SET
 			first_name=?, preferred_name=?, middle_name=?, last_name=?,
 			email=?, phone_number=?, pronouns=?, sex=?, gender=?,
 			birthday=?, address=?, city=?, state=?, zip_code=?, country=?
-		WHERE id=?
-	`
-	_, err = tx.Exec(personUpdate,
-		req.Person.FirstName, req.Person.PreferredName, req.Person.MiddleName, req.Person.LastName,
-		req.Person.Email, req.Person.PhoneNumber, req.Person.Pronouns, req.Person.Sex, req.Person.Gender,
-		req.Person.Birthday, req.Person.Address, req.Person.City, req.Person.State, req.Person.ZipCode, req.Person.Country,
-		adminID,
+		WHERE id=?`,
+		a.FirstName, a.PreferredName, a.MiddleName, a.LastName,
+		a.Email, a.PhoneNumber, a.Pronouns, a.Sex, a.Gender,
+		a.Birthday, a.Address, a.City, a.State, a.ZipCode, a.Country,
+		id,
 	)
 	if err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to update person: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to update admin")
+		log.Println("DB update error:", err)
 		return
 	}
 
-	// Update admin title
-	adminUpdate := `UPDATE admin SET title=? WHERE id=?`
-	_, err = tx.Exec(adminUpdate, req.Title, adminID)
+	// Executes written SQL to update the admin title
+	res2, err := db.ExecContext(r.Context(),
+		"UPDATE admin SET title=? WHERE id=?",
+		a.Title, id,
+	)
 	if err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to update admin: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to update admin title")
+		log.Println("DB update error:", err)
 		return
 	}
 
-	if err := tx.Commit(); err != nil {
-		http.Error(w, "Failed to commit transaction: "+err.Error(), http.StatusInternalServerError)
+	// Gets the number of rows affected by the update
+	rowsAffected, err := res2.RowsAffected()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Admin updated successfully"})
+	// Error message if no rows were updated
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Admin not found")
+		return
+	}
+
+	// Writes JSON response confirming update & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Admin updated successfully",
+	})
 }
