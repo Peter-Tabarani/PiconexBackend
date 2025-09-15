@@ -30,10 +30,10 @@ func GetSpecificDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	}
 	defer rows.Close()
 
-	var specific_documentations []models.Specific_Documentation
+	var specific_documentations []models.SpecificDocumentation
 
 	for rows.Next() {
-		var sd models.Specific_Documentation
+		var sd models.SpecificDocumentation
 		err := rows.Scan(
 			&sd.Activity_ID, &sd.ID, &sd.DocType, &sd.Date, &sd.Time, &sd.File,
 		)
@@ -80,7 +80,7 @@ func GetSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 
 	row := db.QueryRow(query, activityID)
 
-	var sd models.Specific_Documentation
+	var sd models.SpecificDocumentation
 
 	err = row.Scan(
 		&sd.Activity_ID,
@@ -135,10 +135,10 @@ func GetSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *h
 	}
 	defer rows.Close()
 
-	var docs []models.Specific_Documentation
+	var docs []models.SpecificDocumentation
 
 	for rows.Next() {
-		var doc models.Specific_Documentation
+		var doc models.SpecificDocumentation
 		if err := rows.Scan(
 			&doc.Activity_ID, &doc.ID, &doc.DocType, &doc.Date, &doc.Time, &doc.File,
 		); err != nil {

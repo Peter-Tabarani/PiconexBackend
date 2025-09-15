@@ -76,7 +76,7 @@ type Documentation struct {
 	File        []byte `json:"file"`
 }
 
-type Personal_Documentation struct {
+type PersonalDocumentation struct {
 	Activity_ID int    `json:"activity_id"`
 	ID          int    `json:"id"`
 	Date        string `json:"date"`
@@ -84,7 +84,7 @@ type Personal_Documentation struct {
 	File        []byte `json:"file"`
 }
 
-type Specific_Documentation struct {
+type SpecificDocumentation struct {
 	Activity_ID int    `json:"activity_id"`
 	ID          int    `json:"id"`
 	DocType     string `json:"doc_type"`
@@ -107,11 +107,13 @@ type Accommodation struct {
 
 type PointOfContact struct {
 	Activity_ID int    `json:"activity_id"`
+	Date        string `json:"date"`
+	Time        string `json:"time"`
 	Event_Date  string `json:"event_date"`
 	Event_Time  string `json:"event_time"`
 	Event_Type  string `json:"event_type"`
-	Student_ID  *int   `json:"student_id,omitempty"`
-	Admin_ID    *int   `json:"admin_id,omitempty"`
+	ID          *int   `json:"id"`
+	File        []byte `json:"file"`
 }
 
 type Pinned struct {

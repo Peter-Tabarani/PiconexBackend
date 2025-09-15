@@ -3,373 +3,499 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/utils"
 	"github.com/gorilla/mux"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 func GetPointsOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// All data being selected for this GET command
 	query := `
 		SELECT
-			poc.activity_id,
-			poc.event_date,
-			poc.event_time,
-			poc.event_type,
-			poc.student_id,
-			poc.admin_id
+			a.activity_id, a.date, a.time,
+			poc.event_date, poc.event_time, poc.event_type,
+			poc.student_id, poc.file
 		FROM point_of_contact poc
+		JOIN activity a ON poc.activity_id = a.activity_id
 	`
 
-	rows, err := db.Query(query)
+	// Executes written SQL
+	rows, err := db.QueryContext(r.Context(), query)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain points of contact")
+		log.Println("DB query error:", err)
 		return
 	}
 	defer rows.Close()
 
-	var pointOfContacts []models.PointOfContact
+	// Creates an empty slice to obtain results
+	pointsOfContact := make([]models.PointOfContact, 0)
 
+	// Reads each row returned by the database
 	for rows.Next() {
 		var poc models.PointOfContact
-		var studentID sql.NullInt64
-		var adminID sql.NullInt64
-
-		err := rows.Scan(
-			&poc.Activity_ID, &poc.Event_Date, &poc.Event_Time, &poc.Event_Type,
-			&studentID, &adminID,
-		)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		// Parses the current data into fields of "poc" variable
+		if err := rows.Scan(
+			&poc.Activity_ID, &poc.Date, &poc.Time,
+			&poc.Event_Date, &poc.Event_Time, &poc.Event_Type,
+			&poc.ID, &poc.File,
+		); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse points of contact")
+			log.Println("Row scan error:", err)
 			return
 		}
-
-		// 🧪 Debug print to terminal/log
-
-		if studentID.Valid {
-			temp := int(studentID.Int64)
-			poc.Student_ID = &temp
-		}
-		if adminID.Valid {
-			temp := int(adminID.Int64)
-			poc.Admin_ID = &temp
-		}
-
-		pointOfContacts = append(pointOfContacts, poc)
+		// Adds the obtained data to the slice
+		pointsOfContact = append(pointsOfContact, poc)
 	}
 
-	jsonBytes, err := json.MarshalIndent(pointOfContacts, "", "    ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// Checks for errors during iteration such as network interruptions and driver errors
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
+		log.Println("Rows error:", err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	// Writes the slice as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, pointsOfContact)
 }
 
-// FAILING
 func GetPointOfContactByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	activityIDStr := vars["activity_id"]
+	activityIDStr, ok := vars["activity_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
+		return
+	}
+
+	// Converts the "activity_id" string to an integer
 	activityID, err := strconv.Atoi(activityIDStr)
 	if err != nil {
-		http.Error(w, "Invalid activity ID", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
+		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
+	// All data being selected for this GET command
 	query := `
-        SELECT
-            poc.activity_id,
-            poc.event_date,
-            poc.event_time,
-            poc.event_type,
-            ps.student_id,
-            pa.admin_id
-        FROM point_of_contact poc
-        LEFT JOIN poc_stu ps ON poc.activity_id = ps.activity_id
-        LEFT JOIN poc_adm pa ON poc.activity_id = pa.activity_id
-        WHERE poc.activity_id = ?
-    `
+		SELECT
+			a.activity_id, a.date, a.time,
+			poc.event_date, poc.event_time, poc.event_type,
+			poc.id, poc.file
+		FROM point_of_contact poc
+		JOIN activity a ON poc.activity_id = a.activity_id
+		WHERE poc.activity_id = ?
+	`
 
-	row := db.QueryRow(query, activityID)
-
+	// Empty variable for PointOfContact struct
 	var poc models.PointOfContact
-	var studentID sql.NullInt64
-	var adminID sql.NullInt64
 
-	err = row.Scan(
-		&poc.Activity_ID,
-		&poc.Event_Date,
-		&poc.Event_Time,
-		&poc.Event_Type,
-		&studentID,
-		&adminID,
+	// Executes written SQL and retrieves only one row
+	err = db.QueryRowContext(r.Context(), query, activityID).Scan(
+		&poc.Activity_ID, &poc.Date, &poc.Time,
+		&poc.Event_Date, &poc.Event_Time, &poc.Event_Type,
+		&poc.ID, &poc.File,
 	)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "Point of Contact not found", http.StatusNotFound)
-			return
-		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+	// Error message if no rows are found
+	if err == sql.ErrNoRows {
+		utils.WriteError(w, http.StatusNotFound, "Point of Contact not found")
+		return
+		// Error message if QueryRowContext or scan fails
+	} else if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch point of contact")
+		log.Println("DB query error:", err)
 		return
 	}
 
-	if studentID.Valid {
-		poc.Student_ID = new(int)
-		*poc.Student_ID = int(studentID.Int64)
-	} else {
-		poc.Student_ID = nil
-	}
-
-	if adminID.Valid {
-		poc.Admin_ID = new(int)
-		*poc.Admin_ID = int(adminID.Int64)
-	} else {
-		poc.Admin_ID = nil
-	}
-
-	jsonBytes, err := json.MarshalIndent(poc, "", "    ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	// Writes the struct as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, poc)
 }
 
 func GetPointsOfContactByAdminIDAndDate(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	idStr := vars["id"]
-	date := vars["date"]
-
-	adminID, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid admin ID", http.StatusBadRequest)
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
+	idStr, ok := vars["id"]
+	date, dateOk := vars["date"]
+	if !ok || !dateOk {
+		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID or date")
+		return
+	}
+
+	// Converts the "id" string to an integer
+	adminID, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// All data being selected for this GET command
 	query := `
-		SELECT activity_id, event_date, event_time, event_type, student_id, admin_id
-		FROM point_of_contact
-		WHERE admin_id = ? AND event_date = ?
+		SELECT
+			a.activity_id, a.date, a.time,
+			poc.event_date, poc.event_time, poc.event_type,
+			poc.id, poc.file
+		FROM point_of_contact poc
+		JOIN activity a ON poc.activity_id = a.activity_id
+		WHERE poc.admin_id = ? AND poc.event_date = ?
 	`
 
-	rows, err := db.Query(query, adminID, date)
+	// Executes written SQL
+	rows, err := db.QueryContext(r.Context(), query, adminID, date)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain points of contact")
+		log.Println("DB query error:", err)
 		return
 	}
 	defer rows.Close()
 
-	var contacts []models.PointOfContact
+	// Creates an empty slice to obtain results
+	pointsOfContact := make([]models.PointOfContact, 0)
 
+	// Reads each row returned by the database
 	for rows.Next() {
 		var poc models.PointOfContact
 		if err := rows.Scan(
-			&poc.Activity_ID,
-			&poc.Event_Date,
-			&poc.Event_Time,
-			&poc.Event_Type,
-			&poc.Student_ID,
-			&poc.Admin_ID,
+			&poc.Activity_ID, &poc.Date, &poc.Time,
+			&poc.Event_Date, &poc.Event_Time, &poc.Event_Type,
+			&poc.ID, &poc.File,
 		); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse points of contact")
+			log.Println("Row scan error:", err)
 			return
 		}
-		contacts = append(contacts, poc)
+		pointsOfContact = append(pointsOfContact, poc)
 	}
 
-	if len(contacts) == 0 {
-		http.Error(w, "No point of contact records found", http.StatusNotFound)
+	// Checks for errors during iteration
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
+		log.Println("Rows error:", err)
 		return
 	}
 
-	jsonBytes, err := json.MarshalIndent(contacts, "", "    ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// Error message if no rows were found
+	if len(pointsOfContact) == 0 {
+		utils.WriteError(w, http.StatusNotFound, "No point of contact records found")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	// Writes the slice as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, pointsOfContact)
 }
 
 func GetFuturePointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	studentIDStr := vars["student_id"]
-	adminIDStr := vars["admin_id"]
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
 
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
+	studentIDStr, ok1 := vars["student_id"]
+	adminIDStr, ok2 := vars["admin_id"]
+	if !ok1 || !ok2 {
+		utils.WriteError(w, http.StatusBadRequest, "Missing student ID or admin ID")
+		return
+	}
+
+	// Converts the "student_id" and "admin_id" strings to integers
 	studentID, err := strconv.Atoi(studentIDStr)
 	if err != nil {
-		http.Error(w, "Invalid student ID", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+		log.Println("Invalid student ID parse error:", err)
 		return
 	}
 
 	adminID, err := strconv.Atoi(adminIDStr)
 	if err != nil {
-		http.Error(w, "Invalid admin ID", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
+		log.Println("Invalid admin ID parse error:", err)
 		return
 	}
 
 	currentDate := time.Now().Format("2006-01-02") // MySQL DATE format
 
+	// All data being selected for this GET command
 	query := `
-		SELECT activity_id, event_date, event_time, event_type, student_id, admin_id
-		FROM point_of_contact
-		WHERE student_id = ? AND admin_id = ? AND event_date > ?
+		SELECT
+			a.activity_id, a.date, a.time,
+			poc.event_date, poc.event_time, poc.event_type,
+			poc.id, poc.file
+		FROM point_of_contact poc
+		JOIN activity a ON poc.activity_id = a.activity_id
+		WHERE poc.student_id = ? AND poc.admin_id = ? AND poc.event_date > ?
 	`
 
-	rows, err := db.Query(query, studentID, adminID, currentDate)
+	// Executes written SQL
+	rows, err := db.QueryContext(r.Context(), query, studentID, adminID, currentDate)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain future points of contact")
+		log.Println("DB query error:", err)
 		return
 	}
 	defer rows.Close()
 
-	var meetings []models.PointOfContact
+	// Creates an empty slice to obtain results
+	pointsOfContact := make([]models.PointOfContact, 0)
 
+	// Reads each row returned by the database
 	for rows.Next() {
-		var m models.PointOfContact
+		var poc models.PointOfContact
 		if err := rows.Scan(
-			&m.Activity_ID,
-			&m.Event_Date,
-			&m.Event_Time,
-			&m.Event_Type,
-			&m.Student_ID,
-			&m.Admin_ID,
+			&poc.Activity_ID, &poc.Date, &poc.Time,
+			&poc.Event_Date, &poc.Event_Time, &poc.Event_Type,
+			&poc.ID, &poc.File,
 		); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse future points of contact")
+			log.Println("Row scan error:", err)
 			return
 		}
-		meetings = append(meetings, m)
+		pointsOfContact = append(pointsOfContact, poc)
 	}
 
-	if len(meetings) == 0 {
-		http.Error(w, "No future meetings found", http.StatusNotFound)
+	// Checks for errors during iteration
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
+		log.Println("Rows error:", err)
 		return
 	}
 
-	jsonBytes, err := json.MarshalIndent(meetings, "", "    ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// Error message if no rows were found
+	if len(pointsOfContact) == 0 {
+		utils.WriteError(w, http.StatusNotFound, "No future points of contact found")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
-}
-
-type CreatePOCRequest struct {
-	ActivityID int    `json:"activity_id"`
-	EventDate  string `json:"event_date"` // format: YYYY-MM-DD
-	EventTime  string `json:"event_time"` // format: HH:MM:SS
-	EventType  string `json:"event_type"` // "trad", "al", or "in"
-	StudentID  *int   `json:"student_id,omitempty"`
-	AdminID    *int   `json:"admin_id,omitempty"`
+	// Writes the slice as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, pointsOfContact)
 }
 
 func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not POST
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	var req CreatePOCRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+	// Empty variable for PointOfContact struct
+	var poc models.PointOfContact
+
+	// Decodes JSON body from the request into "poc" variable
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
+	if err := decoder.Decode(&poc); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+		log.Println("JSON decode error:", err)
 		return
 	}
 
-	_, err := db.Exec(`
-		INSERT INTO point_of_contact (activity_id, event_date, event_time, event_type, student_id, admin_id)
-		VALUES (?, ?, ?, ?, ?, ?)`,
-		req.ActivityID, req.EventDate, req.EventTime, req.EventType, req.StudentID, req.AdminID,
+	// Validates required fields
+	if poc.Event_Date == "" || poc.Event_Time == "" || poc.Event_Type == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
+
+	// First, insert into activity table
+	res, err := db.ExecContext(r.Context(),
+		`INSERT INTO activity (date, time) VALUES (?, ?)`,
+		poc.Event_Date, poc.Event_Time,
 	)
 	if err != nil {
-		http.Error(w, "Failed to insert point_of_contact: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert activity")
+		log.Println("DB insert activity error:", err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "Point of Contact created successfully",
+	// Get the generated activity_id
+	activityID, err := res.LastInsertId()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get last insert ID for activity")
+		log.Println("LastInsertId error:", err)
+		return
+	}
+
+	// Then, insert into point_of_contact table using the new activity_id
+	_, err = db.ExecContext(r.Context(),
+		`INSERT INTO point_of_contact (activity_id, event_type, id, file) VALUES (?, ?, ?, ?)`,
+		activityID, poc.Event_Type, poc.ID, poc.File,
+	)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert point of contact")
+		log.Println("DB insert point_of_contact error:", err)
+		return
+	}
+
+	// Writes JSON response including the new activity_id & sends a HTTP 201 response code
+	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{
+		"message":     "Point of Contact created successfully",
+		"activity_id": activityID,
 	})
 }
 
 func DeletePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "DELETE, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
+	// Error message for any request that is not DELETE
+	if r.Method != http.MethodDelete {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
 
+	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	activityIDStr := vars["activity_id"]
+	activityIDStr, ok := vars["activity_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
+		return
+	}
 
+	// Converts the "activity_id" string to an integer
 	activityID, err := strconv.Atoi(activityIDStr)
 	if err != nil {
-		http.Error(w, "Invalid activity ID", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
+		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
-	_, err = db.Exec(`DELETE FROM point_of_contact WHERE activity_id = ?`, activityID)
+	// Deletes the point_of_contact first (child table)
+	res, err := db.ExecContext(r.Context(),
+		"DELETE FROM point_of_contact WHERE activity_id = ?", activityID)
 	if err != nil {
-		http.Error(w, "Failed to delete point_of_contact: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete point of contact")
+		log.Println("DB delete error:", err)
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]string{"message": "Point of Contact deleted successfully"})
-}
+	// Check if any row was deleted
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Point of Contact not found")
+		return
+	}
 
-type UpdatePOCRequest struct {
-	EventDate string `json:"event_date"` // "YYYY-MM-DD"
-	EventTime string `json:"event_time"` // "HH:MM:SS"
-	EventType string `json:"event_type"` // "trad", "al", or "in"
-	StudentID *int   `json:"student_id,omitempty"`
-	AdminID   *int   `json:"admin_id,omitempty"`
+	// Deletes the activity row (parent table)
+	_, err = db.ExecContext(r.Context(),
+		"DELETE FROM activity WHERE activity_id = ?", activityID)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete activity")
+		log.Println("DB delete activity error:", err)
+		return
+	}
+
+	// Writes JSON response confirming deletion & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Point of Contact deleted successfully",
+	})
 }
 
 func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not PUT
 	if r.Method != http.MethodPut {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
+	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	activityIDStr := vars["activity_id"]
+	activityIDStr, ok := vars["activity_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
+		return
+	}
+
+	// Converts the "activity_id" string to an integer
 	activityID, err := strconv.Atoi(activityIDStr)
 	if err != nil {
-		http.Error(w, "Invalid activity ID", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
+		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
-	var req UpdatePOCRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+	// Empty variable for PointOfContact struct
+	var poc models.PointOfContact
+
+	// Decodes JSON body from the request into "poc" variable
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
+	if err := decoder.Decode(&poc); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+		log.Println("JSON decode error:", err)
 		return
 	}
 
-	_, err = db.Exec(`
-		UPDATE point_of_contact
-		SET event_date=?, event_time=?, event_type=?, student_id=?, admin_id=?
-		WHERE activity_id=?`,
-		req.EventDate, req.EventTime, req.EventType, req.StudentID, req.AdminID, activityID,
-	)
+	// Validates required fields
+	if poc.Event_Date == "" || poc.Event_Time == "" || poc.Event_Type == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
+
+	// Updates the activity table first
+	_, err = db.ExecContext(r.Context(),
+		`UPDATE activity SET date=?, time=? WHERE activity_id=?`,
+		poc.Event_Date, poc.Event_Time, activityID)
 	if err != nil {
-		http.Error(w, "Failed to update point_of_contact: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to update activity")
+		log.Println("DB update activity error:", err)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Point of Contact updated successfully"})
+	// Updates the point_of_contact table
+	res, err := db.ExecContext(r.Context(),
+		`UPDATE point_of_contact SET event_type=?, id=?, file=? WHERE activity_id=?`,
+		poc.Event_Type, poc.ID, poc.File, activityID)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to update point of contact")
+		log.Println("DB update point_of_contact error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the update
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were updated
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Point of Contact not found")
+		return
+	}
+
+	// Writes JSON response confirming update & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Point of Contact updated successfully",
+	})
 }

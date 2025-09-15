@@ -43,11 +43,8 @@ func GetAccommodations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Reads each row returned by the database
 	for rows.Next() {
-
-		// Empty variable for accommodation struct
 		var a models.Accommodation
-
-		// Parses the current data into fields of "am" variable
+		// Parses the current data into fields of "a" variable
 		if err := rows.Scan(&a.Accommodation_ID, &a.Name, &a.Description); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse accommodations")
 			log.Println("Row scan error:", err)

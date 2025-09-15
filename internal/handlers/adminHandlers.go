@@ -34,6 +34,8 @@ func GetAdmins(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain admins")
 		log.Println("DB query error:", err)
@@ -304,7 +306,7 @@ func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Executes written SQL to update the admin title
-	res2, err := db.ExecContext(r.Context(),
+	res, err := db.ExecContext(r.Context(),
 		"UPDATE admin SET title=? WHERE id=?",
 		a.Title, id,
 	)
@@ -315,7 +317,7 @@ func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Gets the number of rows affected by the update
-	rowsAffected, err := res2.RowsAffected()
+	rowsAffected, err := res.RowsAffected()
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
 		log.Println("RowsAffected error:", err)

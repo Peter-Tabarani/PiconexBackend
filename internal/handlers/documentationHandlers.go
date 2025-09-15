@@ -2,67 +2,93 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
-	"github.com/gorilla/mux"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/utils"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/gorilla/mux"
 )
 
 func GetDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// All data being selected for this GET command
 	query := `
-		SELECT
-			ac.activity_id, ac.date, ac.time, d.file
+		SELECT ac.activity_id, ac.date, ac.time, d.file
 		FROM documentation d
 		JOIN activity ac ON d.activity_id = ac.activity_id
 	`
 
-	rows, err := db.Query(query)
+	// Executes written SQL
+	rows, err := db.QueryContext(r.Context(), query)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain documentations")
+		log.Println("DB query error:", err)
 		return
 	}
 	defer rows.Close()
 
-	var documentations []models.Documentation
+	// Creates an empty slice to obtain results
+	documentations := make([]models.Documentation, 0)
 
+	// Reads each row returned by the database
 	for rows.Next() {
+		// Empty variable for documentation struct
 		var d models.Documentation
-		err := rows.Scan(
-			&d.Activity_ID, &d.Date, &d.Time, &d.File,
-		)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		// Parses the current data into fields of "d" variable
+		if err := rows.Scan(&d.Activity_ID, &d.Date, &d.Time, &d.File); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse documentations")
+			log.Println("Row scan error:", err)
 			return
 		}
+
+		// Adds the obtained data to the slice
 		documentations = append(documentations, d)
 	}
 
-	jsonBytes, err := json.MarshalIndent(documentations, "", "    ") // Pretty print with 4 spaces indent
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// Checks for errors during iteration such as network interruptions and driver errors
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
+		log.Println("Rows error:", err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	// Writes the slice as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, documentations)
 }
 
-// FAILING
 func GetDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	idStr := vars["activity_id"]
-
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid activity ID", http.StatusBadRequest)
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
+	idStr, ok := vars["activity_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
+		return
+	}
+
+	// Converts the "activity_id" string to an integer
+	activityID, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// All data being selected for this GET command
 	query := `
 		SELECT d.activity_id, a.date, a.time, d.file
 		FROM documentation d
@@ -70,24 +96,20 @@ func GetDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		WHERE d.activity_id = ?
 	`
 
-	var doc models.Documentation
-	err = db.QueryRow(query, id).Scan(&doc.Activity_ID, &doc.Date, &doc.Time, &doc.File)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "Documentation not found", http.StatusNotFound)
-		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+	// Empty variable for documentation struct
+	var d models.Documentation
+
+	// Executes written SQL and retrieves only one row
+	err = db.QueryRowContext(r.Context(), query, activityID).Scan(&d.Activity_ID, &d.Date, &d.Time, &d.File)
+	if err == sql.ErrNoRows {
+		utils.WriteError(w, http.StatusNotFound, "Documentation not found")
+		return
+	} else if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch documentation")
+		log.Println("DB query error:", err)
 		return
 	}
 
-	jsonBytes, err := json.MarshalIndent(doc, "", "    ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	// Writes the struct as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, d)
 }

@@ -2,15 +2,26 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/utils"
+
 	"github.com/gorilla/mux"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 func GetPersons(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// All data being selected for this GET command
 	query := `
 		SELECT
 			id, first_name, preferred_name, middle_name, last_name,
@@ -19,53 +30,70 @@ func GetPersons(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		FROM person
 	`
 
-	rows, err := db.Query(query)
+	// Executes written SQL
+	rows, err := db.QueryContext(r.Context(), query)
 	if err != nil {
-		http.Error(w, "Failed to fetch persons", http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain persons")
+		log.Println("DB query error:", err)
 		return
 	}
 	defer rows.Close()
 
-	var persons []models.Person
+	// Creates an empty slice to obtain results
+	persons := make([]models.Person, 0)
 
+	// Reads each row returned by the database
 	for rows.Next() {
 		var p models.Person
+		// Parses the current data into fields of "p" variable
 		if err := rows.Scan(
 			&p.ID, &p.FirstName, &p.PreferredName, &p.MiddleName, &p.LastName,
 			&p.Email, &p.PhoneNumber, &p.Pronouns, &p.Sex, &p.Gender,
 			&p.Birthday, &p.Address, &p.City, &p.State, &p.ZipCode, &p.Country,
 		); err != nil {
-			http.Error(w, "Failed to scan person", http.StatusInternalServerError)
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse persons")
+			log.Println("Row scan error:", err)
 			return
 		}
+		// Adds the obtained data to the slice
 		persons = append(persons, p)
 	}
 
-	jsonBytes, err := json.MarshalIndent(persons, "", "    ")
-	if err != nil {
-		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+	// Checks for errors during iteration such as network interruptions and driver errors
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
+		log.Println("Rows error:", err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	// Writes the slice as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, persons)
 }
 
 func GetPersonByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	idStr, ok := vars["id"]
 	if !ok {
-		http.Error(w, "Missing person ID", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Missing person ID")
 		return
 	}
 
+	// Converts the "id" string to an integer
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid person ID", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Invalid person ID")
+		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
+	// All data being selected for this GET command
 	query := `
 		SELECT
 			id, first_name, preferred_name, middle_name, last_name,
@@ -75,28 +103,27 @@ func GetPersonByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		WHERE id = ?
 	`
 
-	row := db.QueryRow(query, id)
+	// Empty variable for person struct
 	var p models.Person
-	if err := row.Scan(
+
+	// Executes written SQL and retrieves only one row
+	err = db.QueryRowContext(r.Context(), query, id).Scan(
 		&p.ID, &p.FirstName, &p.PreferredName, &p.MiddleName, &p.LastName,
 		&p.Email, &p.PhoneNumber, &p.Pronouns, &p.Sex, &p.Gender,
 		&p.Birthday, &p.Address, &p.City, &p.State, &p.ZipCode, &p.Country,
-	); err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "Person not found", http.StatusNotFound)
-			return
-		}
-		http.Error(w, "Failed to fetch person", http.StatusInternalServerError)
+	)
+
+	// Error message if no rows are found
+	if err == sql.ErrNoRows {
+		utils.WriteError(w, http.StatusNotFound, "Person not found")
+		return
+		// Error message if QueryRowContext or scan fails
+	} else if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch person")
+		log.Println("DB query error:", err)
 		return
 	}
 
-	jsonBytes, err := json.MarshalIndent(p, "", "    ")
-	if err != nil {
-		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	// Writes the struct as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, p)
 }
