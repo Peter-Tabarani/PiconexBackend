@@ -27,7 +27,7 @@ func GetPointsOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		SELECT
 			a.activity_id, a.date, a.time,
 			poc.event_date, poc.event_time, poc.event_type,
-			poc.student_id, poc.file
+			poc.id
 		FROM point_of_contact poc
 		JOIN activity a ON poc.activity_id = a.activity_id
 	`
@@ -51,7 +51,7 @@ func GetPointsOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		if err := rows.Scan(
 			&poc.Activity_ID, &poc.Date, &poc.Time,
 			&poc.Event_Date, &poc.Event_Time, &poc.Event_Type,
-			&poc.ID, &poc.File,
+			&poc.ID,
 		); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse points of contact")
 			log.Println("Row scan error:", err)
@@ -100,7 +100,7 @@ func GetPointOfContactByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		SELECT
 			a.activity_id, a.date, a.time,
 			poc.event_date, poc.event_time, poc.event_type,
-			poc.id, poc.file
+			poc.id
 		FROM point_of_contact poc
 		JOIN activity a ON poc.activity_id = a.activity_id
 		WHERE poc.activity_id = ?
@@ -113,7 +113,7 @@ func GetPointOfContactByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	err = db.QueryRowContext(r.Context(), query, activityID).Scan(
 		&poc.Activity_ID, &poc.Date, &poc.Time,
 		&poc.Event_Date, &poc.Event_Time, &poc.Event_Type,
-		&poc.ID, &poc.File,
+		&poc.ID,
 	)
 
 	// Error message if no rows are found
@@ -160,7 +160,7 @@ func GetPointsOfContactByAdminIDAndDate(db *sql.DB, w http.ResponseWriter, r *ht
 		SELECT
 			a.activity_id, a.date, a.time,
 			poc.event_date, poc.event_time, poc.event_type,
-			poc.id, poc.file
+			poc.id
 		FROM point_of_contact poc
 		JOIN activity a ON poc.activity_id = a.activity_id
 		WHERE poc.admin_id = ? AND poc.event_date = ?
@@ -184,7 +184,7 @@ func GetPointsOfContactByAdminIDAndDate(db *sql.DB, w http.ResponseWriter, r *ht
 		if err := rows.Scan(
 			&poc.Activity_ID, &poc.Date, &poc.Time,
 			&poc.Event_Date, &poc.Event_Time, &poc.Event_Type,
-			&poc.ID, &poc.File,
+			&poc.ID,
 		); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse points of contact")
 			log.Println("Row scan error:", err)
@@ -248,7 +248,7 @@ func GetFuturePointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWr
 		SELECT
 			a.activity_id, a.date, a.time,
 			poc.event_date, poc.event_time, poc.event_type,
-			poc.id, poc.file
+			poc.id
 		FROM point_of_contact poc
 		JOIN activity a ON poc.activity_id = a.activity_id
 		WHERE poc.student_id = ? AND poc.admin_id = ? AND poc.event_date > ?
@@ -272,7 +272,7 @@ func GetFuturePointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWr
 		if err := rows.Scan(
 			&poc.Activity_ID, &poc.Date, &poc.Time,
 			&poc.Event_Date, &poc.Event_Time, &poc.Event_Type,
-			&poc.ID, &poc.File,
+			&poc.ID,
 		); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse future points of contact")
 			log.Println("Row scan error:", err)
@@ -344,8 +344,8 @@ func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Then, insert into point_of_contact table using the new activity_id
 	_, err = db.ExecContext(r.Context(),
-		`INSERT INTO point_of_contact (activity_id, event_type, id, file) VALUES (?, ?, ?, ?)`,
-		activityID, poc.Event_Type, poc.ID, poc.File,
+		`INSERT INTO point_of_contact (activity_id, event_type, id) VALUES (?, ?, ?, ?)`,
+		activityID, poc.Event_Type, poc.ID,
 	)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert point of contact")
@@ -472,8 +472,8 @@ func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Updates the point_of_contact table
 	res, err := db.ExecContext(r.Context(),
-		`UPDATE point_of_contact SET event_type=?, id=?, file=? WHERE activity_id=?`,
-		poc.Event_Type, poc.ID, poc.File, activityID)
+		`UPDATE point_of_contact SET event_type=?, id=? WHERE activity_id=?`,
+		poc.Event_Type, poc.ID, activityID)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update point of contact")
 		log.Println("DB update point_of_contact error:", err)

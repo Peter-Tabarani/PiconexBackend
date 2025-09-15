@@ -113,7 +113,6 @@ type PointOfContact struct {
 	Event_Time  string `json:"event_time"`
 	Event_Type  string `json:"event_type"`
 	ID          *int   `json:"id"`
-	File        []byte `json:"file"`
 }
 
 type Pinned struct {

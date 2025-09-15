@@ -3,18 +3,26 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
+	"github.com/Peter-Tabarani/PiconexBackend/internal/utils"
 	"github.com/gorilla/mux"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 func GetStudents(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// All data being selected for this GET command
 	query := `
 		SELECT
 			p.id, p.first_name, p.preferred_name, p.middle_name, p.last_name,
@@ -25,51 +33,69 @@ func GetStudents(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		JOIN person p ON s.id = p.id
 	`
 
+	// Executes written SQL
 	rows, err := db.Query(query)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain students")
+		log.Println("DB query error:", err)
 		return
 	}
 	defer rows.Close()
 
-	var students []models.Student
+	// Creates an empty slice to obtain results
+	students := make([]models.Student, 0)
 
+	// Reads each row returned by the database
 	for rows.Next() {
 		var s models.Student
-		err := rows.Scan(
+		if err := rows.Scan(
 			&s.ID, &s.FirstName, &s.PreferredName, &s.MiddleName, &s.LastName,
 			&s.Email, &s.PhoneNumber, &s.Pronouns, &s.Sex, &s.Gender,
 			&s.Birthday, &s.Address, &s.City, &s.State, &s.ZipCode, &s.Country,
 			&s.Year, &s.StartYear, &s.PlannedGradYear, &s.Housing, &s.Dining,
-		)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan student")
+			log.Println("Row scan error:", err)
 			return
 		}
 		students = append(students, s)
 	}
 
-	jsonBytes, err := json.MarshalIndent(students, "", "    ") // Pretty print with 4 spaces indent
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// Checks for errors during iteration such as network interruptions and driver errors
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
+		log.Println("Rows error:", err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	// Writes JSON response & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, students)
 }
 
 func GetStudentByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	idStr := vars["id"]
-
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
+	idStr, ok := vars["id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
+		return
+	}
+
+	// Converts the "id" string to an integer
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// SQL query to select a single student
 	query := `
 		SELECT
 			s.id,
@@ -82,67 +108,72 @@ func GetStudentByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		WHERE s.id = ?
 	`
 
-	var student models.Student
+	// Empty variable for student struct
+	var s models.Student
+
+	// Executes query
 	err = db.QueryRow(query, id).Scan(
-		&student.ID,
-		&student.FirstName,
-		&student.PreferredName,
-		&student.MiddleName,
-		&student.LastName,
-		&student.Email,
-		&student.PhoneNumber,
-		&student.Pronouns,
-		&student.Sex,
-		&student.Gender,
-		&student.Birthday,
-		&student.Address,
-		&student.City,
-		&student.State,
-		&student.ZipCode,
-		&student.Country,
-		&student.Year,
-		&student.StartYear,
-		&student.PlannedGradYear,
-		&student.Housing,
-		&student.Dining,
+		&s.ID,
+		&s.FirstName,
+		&s.PreferredName,
+		&s.MiddleName,
+		&s.LastName,
+		&s.Email,
+		&s.PhoneNumber,
+		&s.Pronouns,
+		&s.Sex,
+		&s.Gender,
+		&s.Birthday,
+		&s.Address,
+		&s.City,
+		&s.State,
+		&s.ZipCode,
+		&s.Country,
+		&s.Year,
+		&s.StartYear,
+		&s.PlannedGradYear,
+		&s.Housing,
+		&s.Dining,
 	)
 
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "Student not found", http.StatusNotFound)
-		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+	// Error message if no rows are found
+	if err == sql.ErrNoRows {
+		utils.WriteError(w, http.StatusNotFound, "Student not found")
+		return
+	} else if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch student")
+		log.Println("DB query error:", err)
 		return
 	}
 
-	jsonBytes, err := json.MarshalIndent(student, "", "    ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
+	// Writes JSON response & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, s)
 }
 
 func GetStudentsByName(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	raw := vars["name"]
-	words := strings.Fields(raw) // Split by space
-
-	if len(words) == 0 {
-		http.Error(w, "Invalid name", http.StatusBadRequest)
+	// Error message for any request that is not GET
+	if r.Method != http.MethodGet {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
+
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
+	raw, ok := vars["name"]
+	if !ok || len(strings.TrimSpace(raw)) == 0 {
+		utils.WriteError(w, http.StatusBadRequest, "Missing or invalid name")
+		return
+	}
+
+	// Split the name by spaces
+	words := strings.Fields(raw)
 
 	// Build a condition group for each word and join them with AND
 	var conditions []string
 	var args []interface{}
 
 	for _, word := range words {
-		word = "%" + strings.ToLower(word) + "%" // Match anywhere, not just prefix
+		word = "%" + strings.ToLower(word) + "%"
 		group := `(
 			LOWER(p.first_name) LIKE ? OR
 			LOWER(p.last_name) LIKE ? OR
@@ -157,6 +188,7 @@ func GetStudentsByName(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	whereClause := strings.Join(conditions, " AND ")
 
+	// SQL query to select students matching the name
 	query := `
 		SELECT
 			s.id, p.first_name, p.preferred_name, p.middle_name, p.last_name,
@@ -167,179 +199,227 @@ func GetStudentsByName(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		JOIN person p ON s.id = p.id
 		WHERE ` + whereClause
 
+	// Executes written SQL
 	rows, err := db.Query(query, args...)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain students")
+		log.Println("DB query error:", err)
 		return
 	}
 	defer rows.Close()
 
-	var students []models.Student
+	// Creates an empty slice to obtain results
+	students := make([]models.Student, 0)
 
+	// Reads each row returned by the database
 	for rows.Next() {
 		var s models.Student
-		err := rows.Scan(
+		if err := rows.Scan(
 			&s.ID, &s.FirstName, &s.PreferredName, &s.MiddleName, &s.LastName,
-			&s.Email, &s.PhoneNumber, &s.Pronouns, &s.Sex, &s.Gender, &s.Birthday,
-			&s.Address, &s.City, &s.State, &s.ZipCode, &s.Country,
+			&s.Email, &s.PhoneNumber, &s.Pronouns, &s.Sex, &s.Gender,
+			&s.Birthday, &s.Address, &s.City, &s.State, &s.ZipCode, &s.Country,
 			&s.Year, &s.StartYear, &s.PlannedGradYear, &s.Housing, &s.Dining,
-		)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan student")
+			log.Println("Row scan error:", err)
 			return
 		}
 		students = append(students, s)
 	}
 
+	// Error message if no students were found
 	if len(students) == 0 {
-		http.Error(w, "No student found", http.StatusNotFound)
+		utils.WriteError(w, http.StatusNotFound, "No student found")
 		return
 	}
 
-	jsonBytes, err := json.MarshalIndent(students, "", "    ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonBytes)
-}
-
-// PROBLEM: Should have a GetPinnedStudentsByAdminID
-
-type CreateStudentRequest struct {
-	Person  models.Person  `json:"person"`
-	Student models.Student `json:"student"`
+	// Writes JSON response & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, students)
 }
 
 func CreateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not POST
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	var req CreateStudentRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+	// Empty variables for student struct
+	var s models.Student
+
+	// Decodes JSON body from the request into "s" variable
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
+	if err := decoder.Decode(&s); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+		log.Println("JSON decode error:", err)
 		return
 	}
 
-	tx, err := db.Begin()
-	if err != nil {
-		http.Error(w, "Failed to start transaction", http.StatusInternalServerError)
-		return
-	}
-
-	personQuery := `
-		INSERT INTO person (
+	// Executes SQL to insert into person table
+	res, err := db.ExecContext(r.Context(),
+		`INSERT INTO person (
 			first_name, preferred_name, middle_name, last_name, email,
 			phone_number, pronouns, sex, gender, birthday,
 			address, city, state, zip_code, country
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`
-
-	res, err := tx.Exec(personQuery,
-		req.Person.FirstName, req.Person.PreferredName, req.Person.MiddleName, req.Person.LastName,
-		req.Person.Email, req.Person.PhoneNumber, req.Person.Pronouns, req.Person.Sex,
-		req.Person.Gender, req.Person.Birthday, req.Person.Address, req.Person.City,
-		req.Person.State, req.Person.ZipCode, req.Person.Country,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		s.FirstName, s.PreferredName, s.MiddleName, s.LastName,
+		s.Email, s.PhoneNumber, s.Pronouns, s.Sex, s.Gender, s.Birthday,
+		s.Address, s.City, s.State, s.ZipCode, s.Country,
 	)
 	if err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to insert into person: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert into person")
+		log.Println("DB insert error:", err)
 		return
 	}
 
-	personID, err := res.LastInsertId()
+	// Gets the last inserted person ID
+	lastID, err := res.LastInsertId()
 	if err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to retrieve person ID: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get inserted person ID")
+		log.Println("LastInsertId error:", err)
 		return
 	}
 
-	studentQuery := `
-		INSERT INTO student (
-			id, year, start_year, planned_grad_year, housing, dining
-		) VALUES (?, ?, ?, ?, ?, ?)
-	`
-
-	_, err = tx.Exec(studentQuery,
-		personID, req.Student.Year, req.Student.StartYear, req.Student.PlannedGradYear,
-		req.Student.Housing, req.Student.Dining,
+	// Executes SQL to insert into student table
+	_, err = db.ExecContext(r.Context(),
+		`INSERT INTO student (id, year, start_year, planned_grad_year, housing, dining)
+		VALUES (?, ?, ?, ?, ?, ?)`,
+		lastID, s.Year, s.StartYear, s.PlannedGradYear, s.Housing, s.Dining,
 	)
 	if err != nil {
-		tx.Rollback()
-		http.Error(w, "Failed to insert into student: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert into student")
+		log.Println("DB insert error:", err)
 		return
 	}
 
-	if err := tx.Commit(); err != nil {
-		http.Error(w, "Failed to commit transaction: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	// Writes JSON response & sends a HTTP 201 response code
+	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{
 		"message":   "Student created successfully",
-		"studentId": personID,
+		"studentId": lastID,
 	})
 }
 
 func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "DELETE, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, ngrok-skip-browser-warning")
+	// Error message for any request that is not DELETE
+	if r.Method != http.MethodDelete {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
 
+	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	idStr := vars["id"]
+
+	// Converts the "id" string to an integer
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid student ID", http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
-	// Step 1: Nullify student_id in point_of_contact (ON DELETE SET NULL doesn't cascade)
-	_, err = db.Exec(`UPDATE point_of_contact SET student_id = NULL WHERE student_id = ?`, id)
+	// Executes SQL to delete from student
+	res, err := db.ExecContext(r.Context(),
+		"DELETE FROM student WHERE id = ?",
+		id,
+	)
 	if err != nil {
-		http.Error(w, "Failed to update point_of_contact: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete student")
+		log.Println("DB delete error:", err)
 		return
 	}
 
-	// Step 2: Delete from student (cascades through specific_documentation, stu_accom, stu_dis, person, etc.)
-	_, err = db.Exec(`DELETE FROM student WHERE id = ?`, id)
+	// Gets the number of rows affected by the delete
+	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		http.Error(w, "Failed to delete student: "+err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]string{"message": "Student deleted successfully"})
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Student not found")
+		return
+	}
+
+	// Writes JSON response & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Student deleted successfully",
+	})
 }
 
 func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Only allow PUT method
+	if r.Method != http.MethodPut {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	id := vars["id"]
 
+	// Empty variable for student struct
 	var s models.Student
-	err := json.NewDecoder(r.Body).Decode(&s)
-	if err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
+
+	// Decode JSON directly into a temporary struct
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&s); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+		log.Println("JSON decode error:", err)
 		return
 	}
 
-	// Update only fields that were sent (optional: dynamic SQL builder)
-	_, err = db.Exec(`
-		UPDATE person
-		SET gender = ?
-		WHERE id = ?`, s.Gender, id)
+	// Execute direct SQL update
+	_, err := db.ExecContext(r.Context(),
+		`UPDATE person
+		 SET first_name = ?, preferred_name = ?, middle_name = ?, last_name = ?,
+		     email = ?, phone_number = ?, pronouns = ?, sex = ?, gender = ?,
+		     birthday = ?, address = ?, city = ?, state = ?, zip_code = ?, country = ?
+		 WHERE id = ?`,
+		s.FirstName, s.PreferredName, s.MiddleName, s.LastName,
+		s.Email, s.PhoneNumber, s.Pronouns, s.Sex, s.Gender,
+		s.Birthday, s.Address, s.City, s.State, s.ZipCode, s.Country,
+		id,
+	)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to update: %v", err), http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to update student")
+		log.Println("DB update error:", err)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "Student updated successfully")
+	// Optionally update student table fields
+	res, err := db.ExecContext(r.Context(),
+		`UPDATE student
+		 SET year = ?, start_year = ?, planned_grad_year = ?, housing = ?, dining = ?
+		 WHERE id = ?`,
+		s.Year, s.StartYear, s.PlannedGradYear, s.Housing, s.Dining,
+		id,
+	)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to update student details")
+		log.Println("DB update error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the update
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were updated
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Student not found")
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Student updated successfully",
+	})
 }
