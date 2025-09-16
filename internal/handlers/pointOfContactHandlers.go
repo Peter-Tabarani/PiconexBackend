@@ -317,36 +317,38 @@ func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validates required fields
-	if poc.Event_Date == "" || poc.Event_Time == "" || poc.Event_Type == "" {
-		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
-		return
-	}
+	// TECH DEBT: Validate required fields
 
-	// First, insert into activity table
+	// Executes written SQL to insert a new activity
 	res, err := db.ExecContext(r.Context(),
 		`INSERT INTO activity (date, time) VALUES (?, ?)`,
 		poc.Event_Date, poc.Event_Time,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert activity")
 		log.Println("DB insert activity error:", err)
 		return
 	}
 
-	// Get the generated activity_id
-	activityID, err := res.LastInsertId()
+	// Gets the ID of the newly inserted accommodation
+	lastID, err := res.LastInsertId()
+
+	// Error message if LastInsertId fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get last insert ID for activity")
 		log.Println("LastInsertId error:", err)
 		return
 	}
 
-	// Then, insert into point_of_contact table using the new activity_id
+	// Executes written SQL to insert a new point of contact
 	_, err = db.ExecContext(r.Context(),
 		`INSERT INTO point_of_contact (activity_id, event_type, id) VALUES (?, ?, ?, ?)`,
-		activityID, poc.Event_Type, poc.ID,
+		lastID, poc.Event_Type, poc.ID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert point of contact")
 		log.Println("DB insert point_of_contact error:", err)
@@ -356,7 +358,7 @@ func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Writes JSON response including the new activity_id & sends a HTTP 201 response code
 	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{
 		"message":     "Point of Contact created successfully",
-		"activity_id": activityID,
+		"activity_id": lastID,
 	})
 }
 

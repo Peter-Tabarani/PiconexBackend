@@ -154,11 +154,7 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validates required fields
-	if a.FirstName == "" || a.LastName == "" || a.Email == "" || a.Title == "" {
-		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
-		return
-	}
+	// TECH DEBT: Add validation of required fields
 
 	// Executes written SQL to insert a new person
 	res, err := db.ExecContext(r.Context(),
@@ -171,6 +167,8 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		a.Email, a.PhoneNumber, a.Pronouns, a.Sex, a.Gender,
 		a.Birthday, a.Address, a.City, a.State, a.ZipCode, a.Country,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert admin")
 		log.Println("DB insert error:", err)
@@ -179,6 +177,8 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Gets the ID of the newly inserted person
 	lastID, err := res.LastInsertId()
+
+	// Error message if LastInsertId fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get last insert ID")
 		log.Println("LastInsertId error:", err)
@@ -190,6 +190,8 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"INSERT INTO admin (id, title) VALUES (?, ?)",
 		lastID, a.Title,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert admin title")
 		log.Println("DB insert error:", err)

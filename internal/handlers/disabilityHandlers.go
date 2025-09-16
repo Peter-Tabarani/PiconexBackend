@@ -192,7 +192,7 @@ func CreateDisability(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validates required fields
-	if d.Name == "" || d.Description == "" {
+	if d.Name == "" {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields: name or description")
 		return
 	}
@@ -202,6 +202,8 @@ func CreateDisability(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"INSERT INTO disability (name, description) VALUES (?, ?)",
 		d.Name, d.Description,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert disability")
 		log.Println("DB insert error:", err)
@@ -210,6 +212,8 @@ func CreateDisability(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Gets the ID of the newly inserted disability
 	lastID, err := res.LastInsertId()
+
+	// Error message if LastInsertId fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get last insert ID")
 		log.Println("LastInsertId error:", err)

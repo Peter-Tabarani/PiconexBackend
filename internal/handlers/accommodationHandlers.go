@@ -212,8 +212,8 @@ func CreateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validates required fields
-	if a.Name == "" || a.Description == "" {
-		utils.WriteError(w, http.StatusBadRequest, "Missing required fields: name or description")
+	if a.Name == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields: name")
 		return
 	}
 
@@ -222,6 +222,7 @@ func CreateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"INSERT INTO accommodation (name, description) VALUES (?, ?)",
 		a.Name, a.Description,
 	)
+
 	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert accommodation")
@@ -231,6 +232,7 @@ func CreateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Gets the ID of the newly inserted accommodation
 	lastID, err := res.LastInsertId()
+
 	// Error message if LastInsertId fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get last insert ID")

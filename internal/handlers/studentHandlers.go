@@ -256,6 +256,8 @@ func CreateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TECH DEBT: Validates required fields
+
 	// Executes SQL to insert into person table
 	res, err := db.ExecContext(r.Context(),
 		`INSERT INTO person (
@@ -267,6 +269,8 @@ func CreateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		s.Email, s.PhoneNumber, s.Pronouns, s.Sex, s.Gender, s.Birthday,
 		s.Address, s.City, s.State, s.ZipCode, s.Country,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert into person")
 		log.Println("DB insert error:", err)
@@ -275,6 +279,8 @@ func CreateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Gets the last inserted person ID
 	lastID, err := res.LastInsertId()
+
+	// Error message if LastInsertId fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get inserted person ID")
 		log.Println("LastInsertId error:", err)
@@ -287,13 +293,15 @@ func CreateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		VALUES (?, ?, ?, ?, ?, ?)`,
 		lastID, s.Year, s.StartYear, s.PlannedGradYear, s.Housing, s.Dining,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert into student")
 		log.Println("DB insert error:", err)
 		return
 	}
 
-	// Writes JSON response & sends a HTTP 201 response code
+	// Writes JSON response including the new ID & sends a HTTP 201 response code
 	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{
 		"message":   "Student created successfully",
 		"studentId": lastID,

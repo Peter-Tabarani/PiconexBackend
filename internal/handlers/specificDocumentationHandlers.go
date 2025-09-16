@@ -211,11 +211,15 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// TECH DEBT: Validates required fields
+
 	// Executes SQL to insert into activity table
 	res, err := db.ExecContext(r.Context(),
 		"INSERT INTO activity (date, time) VALUES (?, ?)",
 		sd.Date, sd.Time,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert activity")
 		log.Println("DB insert error:", err)
@@ -223,7 +227,7 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Gets the last inserted activity_id
-	activityID, err := res.LastInsertId()
+	lastID, err := res.LastInsertId()
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get inserted activity ID")
 		log.Println("LastInsertId error:", err)
@@ -233,8 +237,10 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	// Inserts into documentation table
 	_, err = db.ExecContext(r.Context(),
 		"INSERT INTO documentation (activity_id, file) VALUES (?, ?)",
-		activityID, sd.File,
+		lastID, sd.File,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert documentation")
 		log.Println("DB insert error:", err)
@@ -244,8 +250,10 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	// Inserts into specific_documentation table
 	_, err = db.ExecContext(r.Context(),
 		"INSERT INTO specific_documentation (activity_id, id, doc_type) VALUES (?, ?, ?)",
-		activityID, sd.ID, sd.DocType,
+		lastID, sd.ID, sd.DocType,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert specific documentation")
 		log.Println("DB insert error:", err)
@@ -255,7 +263,7 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	// Writes JSON response & sends a HTTP 201 response code
 	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{
 		"message":     "Specific documentation created successfully",
-		"activity_id": activityID,
+		"activity_id": lastID,
 	})
 }
 

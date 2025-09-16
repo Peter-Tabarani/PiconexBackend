@@ -153,7 +153,7 @@ func CreatePinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Empty variable for request struct
 	var req models.Pinned
 	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
+	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
 	if err := decoder.Decode(&req); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
 		log.Println("JSON decode error:", err)
@@ -171,6 +171,8 @@ func CreatePinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"INSERT INTO pinned (admin_id, student_id) VALUES (?, ?)",
 		req.AdminID, req.StudentID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert pinned record")
 		log.Println("DB insert error:", err)
@@ -301,7 +303,7 @@ func CreateStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Empty variable for request struct
 	var req models.StudentAccommodation
 	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
+	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
 	if err := decoder.Decode(&req); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
 		log.Println("JSON decode error:", err)
@@ -319,6 +321,8 @@ func CreateStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"INSERT INTO stu_accom (id, accommodation_id) VALUES (?, ?)",
 		req.ID, req.AccommodationID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert student accommodation")
 		log.Println("DB insert error:", err)
@@ -366,6 +370,8 @@ func DeleteStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"DELETE FROM stu_accom WHERE id = ? AND accommodation_id = ?",
 		studentID, accomID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete student accommodation")
 		log.Println("DB delete error:", err)
@@ -449,7 +455,7 @@ func CreateStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Empty variable for request struct
 	var req models.StudentDisability
 	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
+	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
 	if err := decoder.Decode(&req); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
 		log.Println("JSON decode error:", err)
@@ -467,6 +473,8 @@ func CreateStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"INSERT INTO stu_dis (id, disability_id) VALUES (?, ?)",
 		req.ID, req.DisabilityID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert student disability")
 		log.Println("DB insert error:", err)
@@ -597,7 +605,7 @@ func CreatePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Empty variable for request struct
 	var req models.PocAdmin
 	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
+	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
 	if err := decoder.Decode(&req); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
 		log.Println("JSON decode error:", err)
@@ -615,6 +623,8 @@ func CreatePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"INSERT INTO poc_adm (activity_id, admin_id) VALUES (?, ?)",
 		req.ActivityID, req.AdminID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert POC admin")
 		log.Println("DB insert error:", err)
