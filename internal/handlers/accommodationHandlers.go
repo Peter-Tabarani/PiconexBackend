@@ -253,9 +253,11 @@ func DeleteAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-
-	// Reads the "accommodation_id" value from the path variables
-	idStr := vars["accommodation_id"]
+	idStr, ok := vars["accommodation_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing accommodation ID")
+		return
+	}
 
 	// Converts the "accommodation_id" string to an integer
 	accommodationID, err := strconv.Atoi(idStr)
@@ -270,6 +272,7 @@ func DeleteAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"DELETE FROM accommodation WHERE accommodation_id = ?",
 		accommodationID,
 	)
+
 	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete accommodation")
@@ -279,6 +282,7 @@ func DeleteAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Gets the number of rows affected by the delete
 	rowsAffected, err := res.RowsAffected()
+
 	// Error message if RowsAffected fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")

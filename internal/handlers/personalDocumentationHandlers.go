@@ -207,7 +207,11 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr := vars["activity_id"]
+	idStr, ok := vars["activity_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
+		return
+	}
 
 	// Converts the "activity_id" string to an integer
 	activityID, err := strconv.Atoi(idStr)
@@ -222,6 +226,8 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		"DELETE FROM activity WHERE activity_id=?",
 		activityID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete personal documentation")
 		log.Println("DB delete error:", err)
@@ -230,6 +236,8 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Gets the number of rows affected by the delete
 	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
 		log.Println("RowsAffected error:", err)
@@ -242,7 +250,7 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Writes JSON response & sends a HTTP 200 response code
+	// Writes JSON response confirming deletion & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Personal documentation deleted successfully",
 	})

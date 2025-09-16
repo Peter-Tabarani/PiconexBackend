@@ -295,6 +295,8 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		"DELETE FROM activity WHERE activity_id=?",
 		activityID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete specific documentation")
 		log.Println("DB delete error:", err)

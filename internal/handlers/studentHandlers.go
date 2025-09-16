@@ -322,7 +322,11 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr := vars["id"]
+	idStr, ok := vars["id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
+		return
+	}
 
 	// Converts the "id" string to an integer
 	id, err := strconv.Atoi(idStr)
@@ -337,6 +341,8 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"DELETE FROM student WHERE id = ?",
 		id,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete student")
 		log.Println("DB delete error:", err)
@@ -345,6 +351,8 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Gets the number of rows affected by the delete
 	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
 		log.Println("RowsAffected error:", err)

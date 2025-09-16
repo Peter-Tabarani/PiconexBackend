@@ -241,7 +241,11 @@ func DeleteDisability(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr := vars["disability_id"]
+	idStr, ok := vars["disability_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing disability ID")
+		return
+	}
 
 	// Converts the "disability_id" string to an integer
 	disabilityID, err := strconv.Atoi(idStr)
@@ -251,16 +255,10 @@ func DeleteDisability(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Executes written SQL to delete any student references first
-	_, err = db.ExecContext(r.Context(), "DELETE FROM stu_dis WHERE disability_id = ?", disabilityID)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete student references")
-		log.Println("DB delete error:", err)
-		return
-	}
-
 	// Executes written SQL to delete the disability
 	res, err := db.ExecContext(r.Context(), "DELETE FROM disability WHERE disability_id = ?", disabilityID)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete disability")
 		log.Println("DB delete error:", err)
@@ -269,6 +267,8 @@ func DeleteDisability(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Gets the number of rows affected by the delete
 	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
 		log.Println("RowsAffected error:", err)

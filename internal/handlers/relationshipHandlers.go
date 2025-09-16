@@ -221,6 +221,8 @@ func DeletePinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"DELETE FROM pinned WHERE admin_id = ? AND student_id = ?",
 		adminID, studentID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete pinned record")
 		log.Println("DB delete error:", err)
@@ -234,6 +236,8 @@ func DeletePinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		log.Println("RowsAffected error:", err)
 		return
 	}
+
+	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Pinned record not found")
 		return
@@ -388,6 +392,8 @@ func DeleteStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		log.Println("RowsAffected error:", err)
 		return
 	}
+
+	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Student accommodation record not found")
 		return
@@ -527,6 +533,8 @@ func DeleteStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"DELETE FROM stu_dis WHERE id = ? AND disability_id = ?",
 		id, disabilityID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete student disability")
 		log.Println("DB delete error:", err)
@@ -540,6 +548,8 @@ func DeleteStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		log.Println("RowsAffected error:", err)
 		return
 	}
+
+	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Student disability record not found")
 		return
@@ -680,6 +690,8 @@ func DeletePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"DELETE FROM poc_adm WHERE activity_id = ? AND id = ?",
 		activityID, id,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete POC admin")
 		log.Println("DB delete error:", err)
@@ -693,6 +705,8 @@ func DeletePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		log.Println("RowsAffected error:", err)
 		return
 	}
+
+	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "POC admin record not found")
 		return

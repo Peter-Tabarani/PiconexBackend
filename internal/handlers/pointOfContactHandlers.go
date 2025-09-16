@@ -388,33 +388,30 @@ func DeletePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Deletes the point_of_contact first (child table)
+	// Executes written SQL to delete the point of contact
 	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM point_of_contact WHERE activity_id = ?", activityID)
+		"DELETE FROM activity WHERE activity_id = ?", activityID)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete point of contact")
-		log.Println("DB delete error:", err)
+		log.Println("DB delete activity error:", err)
 		return
 	}
 
-	// Check if any row was deleted
+	// Gets the number of rows affected by the delete
 	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
 		log.Println("RowsAffected error:", err)
 		return
 	}
-	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "Point of Contact not found")
-		return
-	}
 
-	// Deletes the activity row (parent table)
-	_, err = db.ExecContext(r.Context(),
-		"DELETE FROM activity WHERE activity_id = ?", activityID)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete activity")
-		log.Println("DB delete activity error:", err)
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Point of contact not found")
 		return
 	}
 
