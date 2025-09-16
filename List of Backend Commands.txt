@@ -55,4 +55,3 @@ Accommodation[] getAccommodationsByStudentID(id: number)
 
 NEED TO ADD
 PersonalDocumentation[] getPersonalDocumentationByAdminID(id: number)
-Student[] getPinnedStudentsByAdminID(id: number)
