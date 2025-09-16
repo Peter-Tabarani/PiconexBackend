@@ -325,7 +325,7 @@ func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Executes written SQL to insert a new activity
 	res, err := db.ExecContext(r.Context(),
 		`INSERT INTO activity (date, time) VALUES (?, ?)`,
-		poc.Event_Date, poc.Event_Time,
+		poc.Date, poc.Time,
 	)
 
 	// Error message if ExecContext fails
@@ -347,8 +347,8 @@ func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL to insert a new point of contact
 	_, err = db.ExecContext(r.Context(),
-		`INSERT INTO point_of_contact (activity_id, event_type, id) VALUES (?, ?, ?, ?)`,
-		lastID, poc.Event_Type, poc.ID,
+		`INSERT INTO point_of_contact (activity_id, event_date, event_time, event_type, id) VALUES (?, ?, ?, ?, ?)`,
+		lastID, poc.Event_Date, poc.Event_Time, poc.Event_Type, poc.ID,
 	)
 
 	// Error message if ExecContext fails
@@ -468,7 +468,7 @@ func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Updates the activity table first
 	_, err = db.ExecContext(r.Context(),
 		`UPDATE activity SET date=?, time=? WHERE activity_id=?`,
-		poc.Event_Date, poc.Event_Time, activityID)
+		poc.Date, poc.Date, activityID)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update activity")
 		log.Println("DB update activity error:", err)
