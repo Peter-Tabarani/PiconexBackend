@@ -42,5 +42,4 @@ func RegisterPointOfContactRoutes(router *mux.Router, db *sql.DB) {
 	router.HandleFunc("/future-point-of-contact/student/{student_id}/admin/{admin_id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
 		handlers.GetFuturePointsOfContactByStudentIDAndAdminID(db, w, r)
 	})).Methods("GET", "OPTIONS")
-
 }

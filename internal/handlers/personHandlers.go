@@ -32,6 +32,8 @@ func GetPersons(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain persons")
 		log.Println("DB query error:", err)
@@ -86,7 +88,7 @@ func GetPersonByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Converts the "id" string to an integer
-	id, err := strconv.Atoi(idStr)
+	personID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid person ID")
 		log.Println("Invalid ID parse error:", err)
@@ -107,7 +109,7 @@ func GetPersonByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	var p models.Person
 
 	// Executes written SQL and retrieves only one row
-	err = db.QueryRowContext(r.Context(), query, id).Scan(
+	err = db.QueryRowContext(r.Context(), query, personID).Scan(
 		&p.ID, &p.FirstName, &p.PreferredName, &p.MiddleName, &p.LastName,
 		&p.Email, &p.PhoneNumber, &p.Pronouns, &p.Sex, &p.Gender,
 		&p.Birthday, &p.Address, &p.City, &p.State, &p.ZipCode, &p.Country,

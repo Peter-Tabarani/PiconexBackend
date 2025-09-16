@@ -31,7 +31,9 @@ func GetSpecificDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	`
 
 	// Executes written SQL
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain specific documentations")
 		log.Println("DB query error:", err)
@@ -40,7 +42,7 @@ func GetSpecificDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	defer rows.Close()
 
 	// Creates an empty slice to obtain results
-	specificDocs := make([]models.SpecificDocumentation, 0)
+	specificDocumentation := make([]models.SpecificDocumentation, 0)
 
 	// Reads each row returned by the database
 	for rows.Next() {
@@ -51,8 +53,9 @@ func GetSpecificDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 			log.Println("Row scan error:", err)
 			return
 		}
+
 		// Adds the obtained data to the slice
-		specificDocs = append(specificDocs, sd)
+		specificDocumentation = append(specificDocumentation, sd)
 	}
 
 	// Checks for errors during iteration such as network interruptions and driver errors
@@ -63,7 +66,7 @@ func GetSpecificDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	}
 
 	// Writes JSON response & sends a HTTP 200 response code
-	utils.WriteJSON(w, http.StatusOK, specificDocs)
+	utils.WriteJSON(w, http.StatusOK, specificDocumentation)
 }
 
 func GetSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
@@ -108,6 +111,7 @@ func GetSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	if err == sql.ErrNoRows {
 		utils.WriteError(w, http.StatusNotFound, "Specific documentation not found")
 		return
+		// Error message if QueryRowContext or scan fails
 	} else if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch specific documentation")
 		log.Println("DB query error:", err)
@@ -151,7 +155,9 @@ func GetSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *h
 	`
 
 	// Executes written SQL
-	rows, err := db.Query(query, studentID)
+	rows, err := db.QueryContext(r.Context(), query, studentID)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain specific documentations")
 		log.Println("DB query error:", err)
@@ -160,7 +166,7 @@ func GetSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *h
 	defer rows.Close()
 
 	// Creates an empty slice to obtain results
-	specificDocs := make([]models.SpecificDocumentation, 0)
+	specificDocumentation := make([]models.SpecificDocumentation, 0)
 
 	// Reads each row returned by the database
 	for rows.Next() {
@@ -172,7 +178,7 @@ func GetSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *h
 			return
 		}
 		// Adds the obtained data to the slice
-		specificDocs = append(specificDocs, sd)
+		specificDocumentation = append(specificDocumentation, sd)
 	}
 
 	// Checks for errors during iteration such as network interruptions and driver errors
@@ -182,14 +188,8 @@ func GetSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *h
 		return
 	}
 
-	// Error message if no rows were found
-	if len(specificDocs) == 0 {
-		utils.WriteError(w, http.StatusNotFound, "No specific documentation found for the student")
-		return
-	}
-
 	// Writes JSON response & sends a HTTP 200 response code
-	utils.WriteJSON(w, http.StatusOK, specificDocs)
+	utils.WriteJSON(w, http.StatusOK, specificDocumentation)
 }
 
 func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {

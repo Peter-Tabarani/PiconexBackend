@@ -30,6 +30,8 @@ func GetPinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain pinned records")
 		log.Println("DB query error:", err)
@@ -53,7 +55,7 @@ func GetPinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		pinnedList = append(pinnedList, p)
 	}
 
-	// Checks for errors during iteration
+	// Checks for errors during iteration such as network interruptions and driver errors
 	if err := rows.Err(); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
 		log.Println("Rows error:", err)
@@ -90,7 +92,7 @@ func GetPinnedByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
 		SELECT
-			p.admin_id, s.id, pe.first_name, pe.preferred_name, pe.middle_name, pe.last_name,
+			s.id, pe.first_name, pe.preferred_name, pe.middle_name, pe.last_name,
 			pe.email, pe.phone_number, pe.pronouns, pe.sex, pe.gender, pe.birthday,
 			pe.address, pe.city, pe.state, pe.zip_code, pe.country,
 			s.year, s.start_year, s.planned_grad_year, s.housing, s.dining
@@ -102,6 +104,8 @@ func GetPinnedByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query, adminID)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain students pinned by admin")
 		log.Println("DB query error:", err)
@@ -115,11 +119,8 @@ func GetPinnedByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Reads each row returned by the database
 	for rows.Next() {
 		var s models.Student
-		var discardAdminID int // used because SQL returns admin_id first
-
 		// Parses the current row into student struct
 		if err := rows.Scan(
-			&discardAdminID,
 			&s.ID, &s.FirstName, &s.PreferredName, &s.MiddleName, &s.LastName,
 			&s.Email, &s.PhoneNumber, &s.Pronouns, &s.Sex, &s.Gender, &s.Birthday,
 			&s.Address, &s.City, &s.State, &s.ZipCode, &s.Country,
@@ -259,6 +260,8 @@ func GetStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain student accommodations")
 		log.Println("DB query error:", err)
@@ -282,7 +285,7 @@ func GetStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		stuAccomList = append(stuAccomList, sa)
 	}
 
-	// Checks for errors during iteration
+	// Checks for errors during iteration such as network interruptions and driver errors
 	if err := rows.Err(); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
 		log.Println("Rows error:", err)
@@ -411,6 +414,8 @@ func GetStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain student disabilities")
 		log.Println("DB query error:", err)
@@ -434,7 +439,7 @@ func GetStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		stuDisList = append(stuDisList, sd)
 	}
 
-	// Checks for errors during iteration
+	// Checks for errors during iteration such as network interruptions and driver errors
 	if err := rows.Err(); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
 		log.Println("Rows error:", err)
@@ -496,7 +501,7 @@ func DeleteStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	studentIDStr, ok1 := vars["id"]
+	idStr, ok1 := vars["id"]
 	disabilityIDStr, ok2 := vars["disability_id"]
 	if !ok1 || !ok2 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing student or disability ID")
@@ -504,7 +509,7 @@ func DeleteStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Converts path variables to integers
-	studentID, err := strconv.Atoi(studentIDStr)
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
 		log.Println("Invalid student ID parse error:", err)
@@ -520,7 +525,7 @@ func DeleteStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Executes written SQL to delete student disability record
 	res, err := db.ExecContext(r.Context(),
 		"DELETE FROM stu_dis WHERE id = ? AND disability_id = ?",
-		studentID, disabilityID,
+		id, disabilityID,
 	)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete student disability")
@@ -555,12 +560,15 @@ func GetPocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// All data being selected for this GET command
 	query := `
-		SELECT activity_id, admin_id
+		SELECT activity_id, id
 		FROM poc_adm
 	`
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error message if QueryContext fails
+
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain POC admins")
 		log.Println("DB query error:", err)
@@ -575,7 +583,7 @@ func GetPocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var pa models.PocAdmin
 		// Parses the current data into fields of "pa" variable
-		if err := rows.Scan(&pa.ActivityID, &pa.AdminID); err != nil {
+		if err := rows.Scan(&pa.ActivityID, &pa.ID); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse POC admin")
 			log.Println("Row scan error:", err)
 			return
@@ -584,7 +592,7 @@ func GetPocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		pocAdmins = append(pocAdmins, pa)
 	}
 
-	// Checks for errors during iteration
+	// Checks for errors during iteration such as network interruptions and driver errors
 	if err := rows.Err(); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
 		log.Println("Rows error:", err)
@@ -613,15 +621,15 @@ func CreatePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validates required fields
-	if req.ActivityID == 0 || req.AdminID == 0 {
+	if req.ActivityID == 0 || req.ID == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
 	// Executes written SQL to insert POC admin record
 	_, err := db.ExecContext(r.Context(),
-		"INSERT INTO poc_adm (activity_id, admin_id) VALUES (?, ?)",
-		req.ActivityID, req.AdminID,
+		"INSERT INTO poc_adm (activity_id, id) VALUES (?, ?)",
+		req.ActivityID, req.ID,
 	)
 
 	// Error message if ExecContext fails
@@ -647,7 +655,7 @@ func DeletePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	activityIDStr, ok1 := vars["activity_id"]
-	adminIDStr, ok2 := vars["id"]
+	idStr, ok2 := vars["id"]
 	if !ok1 || !ok2 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing activity or admin ID")
 		return
@@ -660,7 +668,7 @@ func DeletePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		log.Println("Invalid activity ID parse error:", err)
 		return
 	}
-	adminID, err := strconv.Atoi(adminIDStr)
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
 		log.Println("Invalid admin ID parse error:", err)
@@ -669,8 +677,8 @@ func DeletePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL to delete POC admin record
 	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM poc_adm WHERE activity_id = ? AND admin_id = ?",
-		activityID, adminID,
+		"DELETE FROM poc_adm WHERE activity_id = ? AND id = ?",
+		activityID, id,
 	)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete POC admin")

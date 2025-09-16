@@ -28,6 +28,8 @@ func GetDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain documentations")
 		log.Println("DB query error:", err)
@@ -40,9 +42,7 @@ func GetDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Reads each row returned by the database
 	for rows.Next() {
-		// Empty variable for documentation struct
 		var d models.Documentation
-
 		// Parses the current data into fields of "d" variable
 		if err := rows.Scan(&d.Activity_ID, &d.Date, &d.Time, &d.File); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse documentations")
@@ -101,9 +101,12 @@ func GetDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL and retrieves only one row
 	err = db.QueryRowContext(r.Context(), query, activityID).Scan(&d.Activity_ID, &d.Date, &d.Time, &d.File)
+
+	// Error message if no rows are found
 	if err == sql.ErrNoRows {
 		utils.WriteError(w, http.StatusNotFound, "Documentation not found")
 		return
+		// Error message if QueryRowContext or scan fails
 	} else if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch documentation")
 		log.Println("DB query error:", err)

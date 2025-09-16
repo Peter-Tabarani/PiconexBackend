@@ -35,7 +35,7 @@ func RegisterAccommodationRoutes(router *mux.Router, db *sql.DB) {
 		}
 	})).Methods("GET", "PUT", "DELETE", "OPTIONS")
 
-	router.HandleFunc("/accommodation/student/{accommodation_id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/accommodation/student/{id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
 		handlers.GetAccommodationsByStudentID(db, w, r)
 	})).Methods("GET", "OPTIONS")
 
