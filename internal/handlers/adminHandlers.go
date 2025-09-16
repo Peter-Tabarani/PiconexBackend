@@ -269,10 +269,14 @@ func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr := vars["id"]
+	idStr, ok := vars["id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID")
+		return
+	}
 
 	// Converts the "id" string to an integer
-	id, err := strconv.Atoi(idStr)
+	adminID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
 		log.Println("Invalid ID parse error:", err)
@@ -291,11 +295,7 @@ func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validates required fields
-	if a.FirstName == "" || a.LastName == "" || a.Email == "" || a.Title == "" {
-		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
-		return
-	}
+	// TECH DEBT: Validate required fields
 
 	// Executes written SQL to update the person data
 	_, err = db.ExecContext(r.Context(),
@@ -307,8 +307,10 @@ func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		a.FirstName, a.PreferredName, a.MiddleName, a.LastName,
 		a.Email, a.PhoneNumber, a.Pronouns, a.Sex, a.Gender,
 		a.Birthday, a.Address, a.City, a.State, a.ZipCode, a.Country,
-		id,
+		adminID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update admin")
 		log.Println("DB update error:", err)
@@ -318,8 +320,10 @@ func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Executes written SQL to update the admin title
 	res, err := db.ExecContext(r.Context(),
 		"UPDATE admin SET title=? WHERE id=?",
-		a.Title, id,
+		a.Title, adminID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update admin title")
 		log.Println("DB update error:", err)
@@ -328,6 +332,8 @@ func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Gets the number of rows affected by the update
 	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
 		log.Println("RowsAffected error:", err)

@@ -311,9 +311,11 @@ func UpdateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-
-	// Reads the "accommodation_id" value from the path variables
-	idStr := vars["accommodation_id"]
+	idStr, ok := vars["accommodation_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing accommodation ID")
+		return
+	}
 
 	// Converts the "accommodation_id" string to an integer
 	accommodationID, err := strconv.Atoi(idStr)
@@ -336,7 +338,7 @@ func UpdateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validates required fields
-	if a.Name == "" || a.Description == "" {
+	if a.Name == "" {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields: name or description")
 		return
 	}
@@ -347,6 +349,7 @@ func UpdateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		`UPDATE accommodation SET name = ?, description = ? WHERE accommodation_id = ?`,
 		a.Name, a.Description, accommodationID,
 	)
+
 	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update accommodation")

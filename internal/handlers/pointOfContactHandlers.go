@@ -456,16 +456,14 @@ func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validates required fields
-	if poc.Event_Date == "" || poc.Event_Time == "" || poc.Event_Type == "" {
-		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
-		return
-	}
+	// TECH DEBT: Validate required fields
 
 	// Updates the activity table first
 	_, err = db.ExecContext(r.Context(),
 		`UPDATE activity SET date=?, time=? WHERE activity_id=?`,
 		poc.Date, poc.Date, activityID)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update activity")
 		log.Println("DB update activity error:", err)
@@ -476,6 +474,8 @@ func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	res, err := db.ExecContext(r.Context(),
 		`UPDATE point_of_contact SET event_date=?, event_time=?, event_type=?, id=? WHERE activity_id=?`,
 		poc.Event_Date, poc.Event_Time, poc.Event_Type, poc.ID, activityID)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update point of contact")
 		log.Println("DB update point_of_contact error:", err)
@@ -484,6 +484,8 @@ func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Gets the number of rows affected by the update
 	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
 		log.Println("RowsAffected error:", err)

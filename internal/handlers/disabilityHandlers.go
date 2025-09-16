@@ -296,8 +296,11 @@ func UpdateDisability(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr := vars["disability_id"]
-
+	idStr, ok := vars["disability_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing disability ID")
+		return
+	}
 	// Converts the "disability_id" string to an integer
 	disabilityID, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -319,7 +322,7 @@ func UpdateDisability(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validates required fields
-	if d.Name == "" || d.Description == "" {
+	if d.Name == "" {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields: name or description")
 		return
 	}

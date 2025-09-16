@@ -358,11 +358,15 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// TECH DEBT: Validate required fields
+
 	// Executes written SQL to update the activity data
 	_, err = db.ExecContext(r.Context(),
 		"UPDATE activity SET date=?, time=? WHERE activity_id=?",
 		sd.Date, sd.Time, activityID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update activity")
 		log.Println("DB update error:", err)
@@ -374,6 +378,8 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		"UPDATE documentation SET file=? WHERE activity_id=?",
 		sd.File, activityID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update documentation")
 		log.Println("DB update error:", err)
@@ -385,6 +391,8 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		"UPDATE specific_documentation SET doc_type=?, id=? WHERE activity_id=?",
 		sd.DocType, sd.ID, activityID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update specific documentation")
 		log.Println("DB update error:", err)
@@ -393,6 +401,8 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Gets the number of rows affected by the update
 	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
 		log.Println("RowsAffected error:", err)

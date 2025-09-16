@@ -380,7 +380,19 @@ func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	id := vars["id"]
+	idStr, ok := vars["id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
+		return
+	}
+
+	// Converts the "accommodation_id" string to an integer
+	studentID, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
 
 	// Empty variable for student struct
 	var s models.Student
@@ -394,8 +406,10 @@ func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TECH DEBT: Validate required fields
+
 	// Execute direct SQL update
-	_, err := db.ExecContext(r.Context(),
+	_, err = db.ExecContext(r.Context(),
 		`UPDATE person
 		 SET first_name = ?, preferred_name = ?, middle_name = ?, last_name = ?,
 		     email = ?, phone_number = ?, pronouns = ?, sex = ?, gender = ?,
@@ -404,8 +418,10 @@ func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		s.FirstName, s.PreferredName, s.MiddleName, s.LastName,
 		s.Email, s.PhoneNumber, s.Pronouns, s.Sex, s.Gender,
 		s.Birthday, s.Address, s.City, s.State, s.ZipCode, s.Country,
-		id,
+		studentID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update student")
 		log.Println("DB update error:", err)
@@ -418,8 +434,10 @@ func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		 SET year = ?, start_year = ?, planned_grad_year = ?, housing = ?, dining = ?
 		 WHERE id = ?`,
 		s.Year, s.StartYear, s.PlannedGradYear, s.Housing, s.Dining,
-		id,
+		studentID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update student details")
 		log.Println("DB update error:", err)
@@ -428,6 +446,8 @@ func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Gets the number of rows affected by the update
 	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
 		log.Println("RowsAffected error:", err)
@@ -440,6 +460,7 @@ func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Writes JSON response confirming update & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Student updated successfully",
 	})

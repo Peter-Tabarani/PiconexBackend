@@ -265,7 +265,11 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr := vars["activity_id"]
+	idStr, ok := vars["activity_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
+		return
+	}
 
 	// Converts the "activity_id" string to an integer
 	activityID, err := strconv.Atoi(idStr)
@@ -287,11 +291,15 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// TECH DEBT: Validate required fields
+
 	// Executes written SQL to update the activity data
 	_, err = db.ExecContext(r.Context(),
 		"UPDATE activity SET date=?, time=? WHERE activity_id=?",
 		pd.Date, pd.Time, activityID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update activity")
 		log.Println("DB update error:", err)
@@ -303,6 +311,8 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		"UPDATE documentation SET file=? WHERE activity_id=?",
 		pd.File, activityID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update documentation")
 		log.Println("DB update error:", err)
@@ -314,6 +324,8 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		"UPDATE personal_documentation SET id=? WHERE activity_id=?",
 		pd.ID, activityID,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update personal documentation")
 		log.Println("DB update error:", err)
@@ -322,6 +334,8 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Gets the number of rows affected by the update
 	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
 		log.Println("RowsAffected error:", err)
@@ -334,7 +348,7 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Writes JSON response & sends a HTTP 200 response code
+	// Writes JSON response confirming update & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Personal documentation updated successfully",
 	})
