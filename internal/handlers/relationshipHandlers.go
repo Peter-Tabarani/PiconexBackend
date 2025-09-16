@@ -30,6 +30,8 @@ func GetPinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain pinned records")
 		log.Println("DB query error:", err)
@@ -53,7 +55,7 @@ func GetPinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		pinnedList = append(pinnedList, p)
 	}
 
-	// Checks for errors during iteration
+	// Checks for errors during iteration such as network interruptions and driver errors
 	if err := rows.Err(); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
 		log.Println("Rows error:", err)
@@ -90,7 +92,7 @@ func GetPinnedByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
 		SELECT
-			p.admin_id, s.id, pe.first_name, pe.preferred_name, pe.middle_name, pe.last_name,
+			s.id, pe.first_name, pe.preferred_name, pe.middle_name, pe.last_name,
 			pe.email, pe.phone_number, pe.pronouns, pe.sex, pe.gender, pe.birthday,
 			pe.address, pe.city, pe.state, pe.zip_code, pe.country,
 			s.year, s.start_year, s.planned_grad_year, s.housing, s.dining
@@ -102,6 +104,8 @@ func GetPinnedByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query, adminID)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain students pinned by admin")
 		log.Println("DB query error:", err)
@@ -115,11 +119,8 @@ func GetPinnedByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Reads each row returned by the database
 	for rows.Next() {
 		var s models.Student
-		var discardAdminID int // used because SQL returns admin_id first
-
 		// Parses the current row into student struct
 		if err := rows.Scan(
-			&discardAdminID,
 			&s.ID, &s.FirstName, &s.PreferredName, &s.MiddleName, &s.LastName,
 			&s.Email, &s.PhoneNumber, &s.Pronouns, &s.Sex, &s.Gender, &s.Birthday,
 			&s.Address, &s.City, &s.State, &s.ZipCode, &s.Country,
@@ -257,6 +258,8 @@ func GetStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain student accommodations")
 		log.Println("DB query error:", err)
@@ -280,7 +283,7 @@ func GetStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		stuAccomList = append(stuAccomList, sa)
 	}
 
-	// Checks for errors during iteration
+	// Checks for errors during iteration such as network interruptions and driver errors
 	if err := rows.Err(); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
 		log.Println("Rows error:", err)
@@ -405,6 +408,8 @@ func GetStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain student disabilities")
 		log.Println("DB query error:", err)
@@ -428,7 +433,7 @@ func GetStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		stuDisList = append(stuDisList, sd)
 	}
 
-	// Checks for errors during iteration
+	// Checks for errors during iteration such as network interruptions and driver errors
 	if err := rows.Err(); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
 		log.Println("Rows error:", err)
@@ -553,6 +558,9 @@ func GetPocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error message if QueryContext fails
+
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain POC admins")
 		log.Println("DB query error:", err)
@@ -576,7 +584,7 @@ func GetPocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		pocAdmins = append(pocAdmins, pa)
 	}
 
-	// Checks for errors during iteration
+	// Checks for errors during iteration such as network interruptions and driver errors
 	if err := rows.Err(); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
 		log.Println("Rows error:", err)

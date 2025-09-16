@@ -31,7 +31,7 @@ func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	`
 
 	// Executes written SQL
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(r.Context(), query)
 
 	// Error message if QueryContext fails
 	if err != nil {
@@ -110,6 +110,7 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	if err == sql.ErrNoRows {
 		utils.WriteError(w, http.StatusNotFound, "Personal documentation not found")
 		return
+		// Error message if QueryRowContext or scan fails
 	} else if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch personal documentation")
 		log.Println("DB query error:", err)

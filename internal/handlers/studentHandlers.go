@@ -34,7 +34,9 @@ func GetStudents(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	`
 
 	// Executes written SQL
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain students")
 		log.Println("DB query error:", err)
@@ -48,6 +50,7 @@ func GetStudents(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Reads each row returned by the database
 	for rows.Next() {
 		var s models.Student
+		// Parses the current data into fields of "s" variable
 		if err := rows.Scan(
 			&s.ID, &s.FirstName, &s.PreferredName, &s.MiddleName, &s.LastName,
 			&s.Email, &s.PhoneNumber, &s.Pronouns, &s.Sex, &s.Gender,
@@ -58,6 +61,8 @@ func GetStudents(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 			log.Println("Row scan error:", err)
 			return
 		}
+
+		// Adds the obtained data to the slice
 		students = append(students, s)
 	}
 
@@ -88,7 +93,7 @@ func GetStudentByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Converts the "id" string to an integer
-	id, err := strconv.Atoi(idStr)
+	studentID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
 		log.Println("Invalid ID parse error:", err)
@@ -112,7 +117,7 @@ func GetStudentByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	var s models.Student
 
 	// Executes query
-	err = db.QueryRow(query, id).Scan(
+	err = db.QueryRow(query, studentID).Scan(
 		&s.ID,
 		&s.FirstName,
 		&s.PreferredName,
@@ -140,6 +145,7 @@ func GetStudentByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	if err == sql.ErrNoRows {
 		utils.WriteError(w, http.StatusNotFound, "Student not found")
 		return
+		// Error message if QueryRowContext or scan fails
 	} else if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch student")
 		log.Println("DB query error:", err)
@@ -200,7 +206,9 @@ func GetStudentsByName(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		WHERE ` + whereClause
 
 	// Executes written SQL
-	rows, err := db.Query(query, args...)
+	rows, err := db.QueryContext(r.Context(), query, args...)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain students")
 		log.Println("DB query error:", err)
@@ -214,6 +222,7 @@ func GetStudentsByName(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Reads each row returned by the database
 	for rows.Next() {
 		var s models.Student
+		// Parses the current data into fields of "s" variable
 		if err := rows.Scan(
 			&s.ID, &s.FirstName, &s.PreferredName, &s.MiddleName, &s.LastName,
 			&s.Email, &s.PhoneNumber, &s.Pronouns, &s.Sex, &s.Gender,
@@ -224,13 +233,9 @@ func GetStudentsByName(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 			log.Println("Row scan error:", err)
 			return
 		}
-		students = append(students, s)
-	}
 
-	// Error message if no students were found
-	if len(students) == 0 {
-		utils.WriteError(w, http.StatusNotFound, "No student found")
-		return
+		// Adds the obtained data to the slice
+		students = append(students, s)
 	}
 
 	// Writes JSON response & sends a HTTP 200 response code

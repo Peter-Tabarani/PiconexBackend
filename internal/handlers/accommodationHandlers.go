@@ -75,8 +75,6 @@ func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-
-	// Reads the "accommodation_id" value from the path variables
 	idStr, ok := vars["accommodation_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing accommodation ID")
@@ -101,7 +99,7 @@ func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Empty variable for accommodation struct
 	var a models.Accommodation
 
-	// Executes written SQL and retrieves only one row
+	// Executes query
 	err = db.QueryRowContext(r.Context(), query, accommodationID).Scan(
 		&a.Accommodation_ID, &a.Name, &a.Description,
 	)
@@ -130,9 +128,11 @@ func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Req
 
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-
-	// Reads the "id" value from the path variables
-	idStr := vars["id"]
+	idStr, ok := vars["id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
+		return
+	}
 
 	// Converts the "id" string to an integer
 	studentID, err := strconv.Atoi(idStr)
@@ -166,10 +166,7 @@ func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Req
 
 	// Reads each row returned by the database
 	for rows.Next() {
-
-		// Empty variable for accommodation struct
 		var a models.Accommodation
-
 		// Parses the current data into fields of "a" variable
 		if err := rows.Scan(&a.Accommodation_ID, &a.Name, &a.Description); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse accommodations")

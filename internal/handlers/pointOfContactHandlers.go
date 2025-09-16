@@ -34,6 +34,8 @@ func GetPointsOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain points of contact")
 		log.Println("DB query error:", err)
@@ -57,6 +59,7 @@ func GetPointsOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 			log.Println("Row scan error:", err)
 			return
 		}
+
 		// Adds the obtained data to the slice
 		pointsOfContact = append(pointsOfContact, poc)
 	}
@@ -169,6 +172,8 @@ func GetPointsOfContactByAdminIDAndDate(db *sql.DB, w http.ResponseWriter, r *ht
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query, id, date)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain points of contact")
 		log.Println("DB query error:", err)
@@ -182,6 +187,7 @@ func GetPointsOfContactByAdminIDAndDate(db *sql.DB, w http.ResponseWriter, r *ht
 	// Reads each row returned by the database
 	for rows.Next() {
 		var poc models.PointOfContact
+		// Parses the current data into fields of "a" variable
 		if err := rows.Scan(
 			&poc.Activity_ID, &poc.Date, &poc.Time,
 			&poc.Event_Date, &poc.Event_Time, &poc.Event_Type,
@@ -191,19 +197,15 @@ func GetPointsOfContactByAdminIDAndDate(db *sql.DB, w http.ResponseWriter, r *ht
 			log.Println("Row scan error:", err)
 			return
 		}
+
+		// Adds the obtained data to the slice
 		pointsOfContact = append(pointsOfContact, poc)
 	}
 
-	// Checks for errors during iteration
+	// Checks for errors during iteration such as network interruptions and driver errors
 	if err := rows.Err(); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
 		log.Println("Rows error:", err)
-		return
-	}
-
-	// Error message if no rows were found
-	if len(pointsOfContact) == 0 {
-		utils.WriteError(w, http.StatusNotFound, "No point of contact records found")
 		return
 	}
 
@@ -258,6 +260,8 @@ func GetFuturePointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWr
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query, studentID, adminID, currentDate)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain future points of contact")
 		log.Println("DB query error:", err)
@@ -271,6 +275,7 @@ func GetFuturePointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWr
 	// Reads each row returned by the database
 	for rows.Next() {
 		var poc models.PointOfContact
+		// Parses the current data into fields of "a" variable
 		if err := rows.Scan(
 			&poc.Activity_ID, &poc.Date, &poc.Time,
 			&poc.Event_Date, &poc.Event_Time, &poc.Event_Type,
@@ -280,6 +285,8 @@ func GetFuturePointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWr
 			log.Println("Row scan error:", err)
 			return
 		}
+
+		// Adds the obtained data to the slice
 		pointsOfContact = append(pointsOfContact, poc)
 	}
 
@@ -287,12 +294,6 @@ func GetFuturePointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWr
 	if err := rows.Err(); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
 		log.Println("Rows error:", err)
-		return
-	}
-
-	// Error message if no rows were found
-	if len(pointsOfContact) == 0 {
-		utils.WriteError(w, http.StatusNotFound, "No future points of contact found")
 		return
 	}
 

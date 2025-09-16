@@ -91,7 +91,7 @@ func GetAdminByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Converts the "id" string to an integer
-	id, err := strconv.Atoi(idStr)
+	adminID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
 		log.Println("Invalid ID parse error:", err)
@@ -113,7 +113,7 @@ func GetAdminByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	var a models.Admin
 
 	// Executes written SQL and retrieves only one row
-	err = db.QueryRowContext(r.Context(), query, id).Scan(
+	err = db.QueryRowContext(r.Context(), query, adminID).Scan(
 		&a.ID, &a.FirstName, &a.PreferredName, &a.MiddleName, &a.LastName,
 		&a.Email, &a.PhoneNumber, &a.Pronouns, &a.Sex, &a.Gender,
 		&a.Birthday, &a.Address, &a.City, &a.State, &a.ZipCode, &a.Country,

@@ -37,9 +37,7 @@ func GetDisabilities(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Reads each row returned by the database
 	for rows.Next() {
-		// Empty variable for disability struct
 		var d models.Disability
-
 		// Parses the current data into fields of "d" variable
 		if err := rows.Scan(&d.Disability_ID, &d.Name, &d.Description); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse disabilities")
@@ -93,9 +91,12 @@ func GetDisabilityByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL and retrieves only one row
 	err = db.QueryRowContext(r.Context(), query, disabilityID).Scan(&d.Disability_ID, &d.Name, &d.Description)
+
+	// Error message if no rows are found
 	if err == sql.ErrNoRows {
 		utils.WriteError(w, http.StatusNotFound, "Disability not found")
 		return
+		// Error message if QueryRowContext or scan fails
 	} else if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch disability")
 		log.Println("DB query error:", err)
@@ -115,7 +116,11 @@ func GetDisabilitiesByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Reque
 
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr := vars["id"]
+	idStr, ok := vars["id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
+		return
+	}
 
 	// Converts the "id" string to an integer
 	studentID, err := strconv.Atoi(idStr)
@@ -135,6 +140,8 @@ func GetDisabilitiesByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Reque
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query, studentID)
+
+	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain disabilities for student")
 		log.Println("DB query error:", err)
@@ -147,9 +154,7 @@ func GetDisabilitiesByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Reque
 
 	// Reads each row returned by the database
 	for rows.Next() {
-		// Empty variable for disability struct
 		var d models.Disability
-
 		// Parses the current data into fields of "d" variable
 		if err := rows.Scan(&d.Disability_ID, &d.Name, &d.Description); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse disabilities")

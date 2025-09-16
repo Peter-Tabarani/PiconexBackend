@@ -43,11 +43,8 @@ func GetActivities(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Reads each row returned by the database
 	for rows.Next() {
-
-		// Empty variable for activitie struct
 		var a models.Activity
-
-		// Parses the current data into fields of "am" variable
+		// Parses the current data into fields of "a" variable
 		if err := rows.Scan(&a.Activity_ID, &a.Date, &a.Time); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse activities")
 			log.Println("Row scan error:", err)
@@ -78,15 +75,13 @@ func GetActivityByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-
-	// Reads the "activity_id" value from the path variables
 	idStr, ok := vars["activity_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
 		return
 	}
 
-	// Converts the "activityid" string to an integer
+	// Converts the "activity_id" string to an integer
 	activityID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
@@ -133,10 +128,7 @@ func GetActivitiesByDate(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-
-	// Reads the "date" value from the path variables
 	date := vars["date"]
-
 	if date == "" {
 		utils.WriteError(w, http.StatusBadRequest, "Date is required")
 		return
@@ -165,10 +157,7 @@ func GetActivitiesByDate(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Reads each row returned by the database
 	for rows.Next() {
-
-		// Empty variable for activity struct
 		var a models.Activity
-
 		// Parses the current data into fields of "a" variable
 		if err := rows.Scan(&a.Activity_ID, &a.Date, &a.Time); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse activities")
