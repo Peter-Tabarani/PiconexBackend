@@ -148,14 +148,14 @@ func GetPointsOfContactByAdminIDAndDate(db *sql.DB, w http.ResponseWriter, r *ht
 	}
 
 	// Converts the "id" string to an integer
-	adminID, err := strconv.Atoi(idStr)
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
 		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
-	// All data being selected for this GET command
+	// Query: join point_of_contact -> activity and poc_adm
 	query := `
 		SELECT
 			a.activity_id, a.date, a.time,
@@ -163,11 +163,12 @@ func GetPointsOfContactByAdminIDAndDate(db *sql.DB, w http.ResponseWriter, r *ht
 			poc.id
 		FROM point_of_contact poc
 		JOIN activity a ON poc.activity_id = a.activity_id
-		WHERE poc.admin_id = ? AND poc.event_date = ?
+		JOIN poc_adm pa ON poc.activity_id = pa.activity_id
+		WHERE pa.id = ? AND poc.event_date = ?
 	`
 
 	// Executes written SQL
-	rows, err := db.QueryContext(r.Context(), query, adminID, date)
+	rows, err := db.QueryContext(r.Context(), query, id, date)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain points of contact")
 		log.Println("DB query error:", err)
@@ -243,7 +244,7 @@ func GetFuturePointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWr
 
 	currentDate := time.Now().Format("2006-01-02") // MySQL DATE format
 
-	// All data being selected for this GET command
+	// Query: join point_of_contact -> activity -> poc_adm
 	query := `
 		SELECT
 			a.activity_id, a.date, a.time,
@@ -251,7 +252,8 @@ func GetFuturePointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWr
 			poc.id
 		FROM point_of_contact poc
 		JOIN activity a ON poc.activity_id = a.activity_id
-		WHERE poc.student_id = ? AND poc.admin_id = ? AND poc.event_date > ?
+		JOIN poc_adm pa ON poc.activity_id = pa.activity_id
+		WHERE poc.id = ? AND pa.id = ? AND poc.event_date > ?
 	`
 
 	// Executes written SQL
@@ -344,8 +346,8 @@ func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Then, insert into point_of_contact table using the new activity_id
 	_, err = db.ExecContext(r.Context(),
-		`INSERT INTO point_of_contact (activity_id, event_type, id) VALUES (?, ?, ?, ?)`,
-		activityID, poc.Event_Type, poc.ID,
+		`INSERT INTO point_of_contact (activity_id, event_date, event_time, event_type, id) VALUES (?, ?, ?, ?, ?)`,
+		activityID, poc.Event_Date, poc.Event_Time, poc.Event_Type, poc.ID,
 	)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert point of contact")
@@ -472,8 +474,8 @@ func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Updates the point_of_contact table
 	res, err := db.ExecContext(r.Context(),
-		`UPDATE point_of_contact SET event_type=?, id=? WHERE activity_id=?`,
-		poc.Event_Type, poc.ID, activityID)
+		`UPDATE point_of_contact SET event_date=?, event_time=?, event_type=?, id=? WHERE activity_id=?`,
+		poc.Event_Date, poc.Event_Time, poc.Event_Type, poc.ID, activityID)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update point of contact")
 		log.Println("DB update point_of_contact error:", err)

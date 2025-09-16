@@ -488,7 +488,7 @@ func DeleteStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	studentIDStr, ok1 := vars["id"]
+	idStr, ok1 := vars["id"]
 	disabilityIDStr, ok2 := vars["disability_id"]
 	if !ok1 || !ok2 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing student or disability ID")
@@ -496,7 +496,7 @@ func DeleteStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Converts path variables to integers
-	studentID, err := strconv.Atoi(studentIDStr)
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
 		log.Println("Invalid student ID parse error:", err)
@@ -512,7 +512,7 @@ func DeleteStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Executes written SQL to delete student disability record
 	res, err := db.ExecContext(r.Context(),
 		"DELETE FROM stu_dis WHERE id = ? AND disability_id = ?",
-		studentID, disabilityID,
+		id, disabilityID,
 	)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete student disability")
@@ -547,7 +547,7 @@ func GetPocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// All data being selected for this GET command
 	query := `
-		SELECT activity_id, admin_id
+		SELECT activity_id, id
 		FROM poc_adm
 	`
 
@@ -567,7 +567,7 @@ func GetPocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var pa models.PocAdmin
 		// Parses the current data into fields of "pa" variable
-		if err := rows.Scan(&pa.ActivityID, &pa.AdminID); err != nil {
+		if err := rows.Scan(&pa.ActivityID, &pa.ID); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse POC admin")
 			log.Println("Row scan error:", err)
 			return
@@ -605,15 +605,15 @@ func CreatePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validates required fields
-	if req.ActivityID == 0 || req.AdminID == 0 {
+	if req.ActivityID == 0 || req.ID == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
 	// Executes written SQL to insert POC admin record
 	_, err := db.ExecContext(r.Context(),
-		"INSERT INTO poc_adm (activity_id, admin_id) VALUES (?, ?)",
-		req.ActivityID, req.AdminID,
+		"INSERT INTO poc_adm (activity_id, id) VALUES (?, ?)",
+		req.ActivityID, req.ID,
 	)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert POC admin")
@@ -637,7 +637,7 @@ func DeletePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	activityIDStr, ok1 := vars["activity_id"]
-	adminIDStr, ok2 := vars["id"]
+	idStr, ok2 := vars["id"]
 	if !ok1 || !ok2 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing activity or admin ID")
 		return
@@ -650,7 +650,7 @@ func DeletePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		log.Println("Invalid activity ID parse error:", err)
 		return
 	}
-	adminID, err := strconv.Atoi(adminIDStr)
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
 		log.Println("Invalid admin ID parse error:", err)
@@ -659,8 +659,8 @@ func DeletePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL to delete POC admin record
 	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM poc_adm WHERE activity_id = ? AND admin_id = ?",
-		activityID, adminID,
+		"DELETE FROM poc_adm WHERE activity_id = ? AND id = ?",
+		activityID, id,
 	)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete POC admin")

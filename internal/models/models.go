@@ -132,5 +132,5 @@ type StudentAccommodation struct {
 
 type PocAdmin struct {
 	ActivityID int `json:"activity_id"`
-	AdminID    int `json:"id"`
+	ID         int `json:"id"`
 }
