@@ -22,6 +22,7 @@ func NewRouter(db *sql.DB) *mux.Router {
 	routes.RegisterDisabilityRoutes(router, db)
 	routes.RegisterAccommodationRoutes(router, db)
 	routes.RegisterRelationshipRoutes(router, db)
+	routes.RegisterAuthRoutes(router, db)
 
 	return router
 }

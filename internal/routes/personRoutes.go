@@ -9,13 +9,33 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// RegisterPersonRoutes registers all person endpoints to the router
 func RegisterPersonRoutes(router *mux.Router, db *sql.DB) {
-	router.HandleFunc("/person", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
-		handlers.GetPersons(db, w, r)
-	})).Methods("GET", "OPTIONS")
+	personRouter := router.PathPrefix("/person").Subrouter()
+	personRouter.Use(utils.WithCORS, utils.AuthMiddleware)
 
-	router.HandleFunc("/person/{id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
-		handlers.GetPersonByID(db, w, r)
-	})).Methods("GET", "OPTIONS")
+	personRouter.Handle("",
+		utils.RollMiddleware(map[string][]string{
+			"GET": {"student", "admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				handlers.GetPersons(db, w, r)
+			default:
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			}
+		})),
+	).Methods("GET", "OPTIONS")
+
+	personRouter.Handle("/{id}",
+		utils.RollMiddleware(map[string][]string{
+			"GET": {"student", "admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				handlers.GetPersonByID(db, w, r)
+			default:
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			}
+		})),
+	).Methods("GET", "OPTIONS")
 }

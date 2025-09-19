@@ -9,13 +9,33 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// RegisterPersonRoutes registers all person endpoints to the router
 func RegisterDocumentationRoutes(router *mux.Router, db *sql.DB) {
-	router.HandleFunc("/documentation", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
-		handlers.GetDocumentations(db, w, r)
-	})).Methods("GET", "OPTIONS")
+	documentationRouter := router.PathPrefix("/documentation").Subrouter()
+	documentationRouter.Use(utils.WithCORS, utils.AuthMiddleware)
 
-	router.HandleFunc("/documentation/{activity_id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
-		handlers.GetDocumentationByID(db, w, r)
-	})).Methods("GET", "OPTIONS")
+	documentationRouter.Handle("",
+		utils.RollMiddleware(map[string][]string{
+			"GET": {"student", "admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				handlers.GetDocumentations(db, w, r)
+			default:
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			}
+		})),
+	).Methods("GET", "OPTIONS")
+
+	documentationRouter.Handle("/{activity_id}",
+		utils.RollMiddleware(map[string][]string{
+			"GET": {"student", "admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				handlers.GetDocumentationByID(db, w, r)
+			default:
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			}
+		})),
+	).Methods("GET", "OPTIONS")
 }

@@ -11,32 +11,49 @@ import (
 )
 
 func RegisterAccommodationRoutes(router *mux.Router, db *sql.DB) {
-	router.HandleFunc("/accommodation", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case "GET":
-			handlers.GetAccommodations(db, w, r)
-		case "POST":
-			handlers.CreateAccommodation(db, w, r)
-		default:
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		}
-	})).Methods("GET", "POST", "OPTIONS")
+	accommodationRouter := router.PathPrefix("/accommodation").Subrouter()
+	accommodationRouter.Use(utils.WithCORS, utils.AuthMiddleware)
 
-	router.HandleFunc("/accommodation/{accommodation_id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case "GET":
-			handlers.GetAccommodationByID(db, w, r)
-		case "PUT":
-			handlers.UpdateAccommodation(db, w, r)
-		case "DELETE":
-			handlers.DeleteAccommodation(db, w, r)
-		default:
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		}
-	})).Methods("GET", "PUT", "DELETE", "OPTIONS")
+	accommodationRouter.Handle("",
+		utils.RollMiddleware(map[string][]string{
+			"GET":  {"student", "admin"},
+			"POST": {"admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				handlers.GetAccommodations(db, w, r)
+			case http.MethodPost:
+				handlers.CreateAccommodation(db, w, r)
+			default:
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			}
+		})),
+	).Methods("GET", "POST", "OPTIONS")
 
-	router.HandleFunc("/accommodation/student/{id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
-		handlers.GetAccommodationsByStudentID(db, w, r)
-	})).Methods("GET", "OPTIONS")
+	accommodationRouter.Handle("/{accommodation_id}",
+		utils.RollMiddleware(map[string][]string{
+			"GET":    {"student", "admin"},
+			"PUT":    {"admin"},
+			"DELETE": {"admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				handlers.GetAccommodationByID(db, w, r)
+			case http.MethodPut:
+				handlers.UpdateAccommodation(db, w, r)
+			case http.MethodDelete:
+				handlers.DeleteAccommodation(db, w, r)
+			default:
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			}
+		})),
+	).Methods("GET", "PUT", "DELETE", "OPTIONS")
 
+	accommodationRouter.Handle("/student/{id}",
+		utils.RollMiddleware(map[string][]string{
+			"GET": {"student", "admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			handlers.GetAccommodationsByStudentID(db, w, r)
+		})),
+	).Methods("GET", "OPTIONS")
 }

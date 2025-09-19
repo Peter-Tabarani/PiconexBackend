@@ -11,27 +11,41 @@ import (
 )
 
 func RegisterAdminRoutes(router *mux.Router, db *sql.DB) {
-	router.HandleFunc("/admin", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case "GET":
-			handlers.GetAdmins(db, w, r)
-		case "POST":
-			handlers.CreateAdmin(db, w, r)
-		default:
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		}
-	})).Methods("GET", "POST", "OPTIONS")
+	adminRouter := router.PathPrefix("/admin").Subrouter()
+	adminRouter.Use(utils.WithCORS, utils.AuthMiddleware)
 
-	router.HandleFunc("/admin/{id}", utils.WithCORS(func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case "GET":
-			handlers.GetAdminByID(db, w, r)
-		case "PUT":
-			handlers.UpdateAdmin(db, w, r)
-		case "DELETE":
-			handlers.DeleteAdmin(db, w, r)
-		default:
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		}
-	})).Methods("GET", "PUT", "DELETE", "OPTIONS")
+	adminRouter.Handle("",
+		utils.RollMiddleware(map[string][]string{
+			"GET":  {"student", "admin"},
+			"POST": {"admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				handlers.GetAdmins(db, w, r)
+			case http.MethodPost:
+				handlers.CreateAdmin(db, w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+		})),
+	).Methods("GET", "POST", "OPTIONS")
+
+	adminRouter.Handle("/{id}",
+		utils.RollMiddleware(map[string][]string{
+			"GET":    {"student", "admin"},
+			"PUT":    {"admin"},
+			"DELETE": {"admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				handlers.GetAdminByID(db, w, r)
+			case http.MethodPut:
+				handlers.UpdateAdmin(db, w, r)
+			case http.MethodDelete:
+				handlers.DeleteAdmin(db, w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+		})),
+	).Methods("GET", "PUT", "DELETE", "OPTIONS")
 }
