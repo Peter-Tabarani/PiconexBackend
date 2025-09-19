@@ -341,33 +341,47 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"DELETE FROM student WHERE id = ?",
 		id,
 	)
-
-	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete student")
 		log.Println("DB delete error:", err)
 		return
 	}
 
-	// Gets the number of rows affected by the delete
 	rowsAffected, err := res.RowsAffected()
-
-	// Error message if RowsAffected fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
 		log.Println("RowsAffected error:", err)
 		return
 	}
 
-	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Student not found")
 		return
 	}
 
-	// Writes JSON response & sends a HTTP 200 response code
+	// Delete the corresponding person
+	res, err = db.ExecContext(r.Context(), "DELETE FROM person WHERE id = ?", id)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete person")
+		log.Println("DB delete person error:", err)
+		return
+	}
+
+	rowsAffected, err = res.RowsAffected()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected for person")
+		log.Println("RowsAffected person error:", err)
+		return
+	}
+
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Person not found")
+		return
+	}
+
+	// Writes JSON response confirming deletion
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
-		"message": "Student deleted successfully",
+		"message": "Student and corresponding person deleted successfully",
 	})
 }
 
