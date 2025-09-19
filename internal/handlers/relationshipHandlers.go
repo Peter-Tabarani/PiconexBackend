@@ -717,3 +717,59 @@ func DeletePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"message": "POC Admin deleted successfully",
 	})
 }
+
+func DeletePocAdminByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not DELETE
+	if r.Method != http.MethodDelete {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Extract path variable
+	vars := mux.Vars(r)
+	idStr, ok := vars["id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID")
+		return
+	}
+
+	// Convert path variable to integer
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
+		log.Println("Invalid admin ID parse error:", err)
+		return
+	}
+
+	// Executes written SQL to delete poc_adm records for given admin
+	res, err := db.ExecContext(r.Context(),
+		"DELETE FROM poc_adm WHERE id = ?",
+		id,
+	)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete poc_adm records")
+		log.Println("DB delete error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "No poc_adm records found for this admin ID")
+		return
+	}
+
+	// Writes JSON response confirming deletion & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "POC Admin records deleted successfully",
+	})
+}
