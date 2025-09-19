@@ -10,10 +10,10 @@ import (
 )
 
 func RegisterAuthRoutes(router *mux.Router, db *sql.DB) {
-	authRouter := router.PathPrefix("/").Subrouter()
-	authRouter.Use(utils.WithCORS, utils.AuthMiddleware)
+	publicAuth := router.PathPrefix("/").Subrouter()
+	publicAuth.Use(utils.WithCORS)
 
-	authRouter.HandleFunc("/signup", func(w http.ResponseWriter, r *http.Request) {
+	publicAuth.HandleFunc("/signup/student", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
 			handlers.SignupHandler(db, w, r)
@@ -22,7 +22,7 @@ func RegisterAuthRoutes(router *mux.Router, db *sql.DB) {
 		}
 	}).Methods("POST", "OPTIONS")
 
-	authRouter.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+	publicAuth.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
 			handlers.LoginHandler(db, w, r)
@@ -30,4 +30,20 @@ func RegisterAuthRoutes(router *mux.Router, db *sql.DB) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	}).Methods("POST", "OPTIONS")
+
+	protectedAuth := router.PathPrefix("/").Subrouter()
+	protectedAuth.Use(utils.WithCORS, utils.AuthMiddleware)
+
+	protectedAuth.Handle("/signup",
+		utils.RollMiddleware(map[string][]string{
+			"POST": {"admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodPost:
+				handlers.AdminSignupStudentHandler(db, w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+		})),
+	).Methods("POST", "OPTIONS")
 }

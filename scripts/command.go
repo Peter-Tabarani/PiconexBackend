@@ -21,7 +21,7 @@ func main() {
 
 	// --- Put any SQL query you want here ---
 	query := `
-
+SELECT * from users;
 	`
 
 	// Decide if it's a query (returns rows) or command (update/insert)

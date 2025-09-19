@@ -9,6 +9,7 @@ import (
 
 	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 	"github.com/Peter-Tabarani/PiconexBackend/internal/utils"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/gorilla/mux"
 
@@ -143,12 +144,16 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Empty variable for admin struct
-	var a models.Admin
+	type CreateAdminRequest struct {
+		models.Admin
+		Password string `json:"password"`
+	}
 
-	// Decodes JSON body from the request into "a" variable
+	// Decodes JSON body from the request into "req" variable
+	var req CreateAdminRequest
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
-	if err := decoder.Decode(&a); err != nil {
+	if err := decoder.Decode(&req); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
 		log.Println("JSON decode error:", err)
 		return
@@ -159,13 +164,13 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Executes written SQL to insert a new person
 	res, err := db.ExecContext(r.Context(),
 		`INSERT INTO person (
-			first_name, preferred_name, middle_name, last_name,
-			email, phone_number, pronouns, sex, gender,
-			birthday, address, city, state, zip_code, country
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		a.FirstName, a.PreferredName, a.MiddleName, a.LastName,
-		a.Email, a.PhoneNumber, a.Pronouns, a.Sex, a.Gender,
-		a.Birthday, a.Address, a.City, a.State, a.ZipCode, a.Country,
+		first_name, preferred_name, middle_name, last_name,
+		email, phone_number, pronouns, sex, gender,
+		birthday, address, city, state, zip_code, country
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		req.FirstName, req.PreferredName, req.MiddleName, req.LastName,
+		req.Email, req.PhoneNumber, req.Pronouns, req.Sex, req.Gender,
+		req.Birthday, req.Address, req.City, req.State, req.ZipCode, req.Country,
 	)
 
 	// Error message if ExecContext fails
@@ -188,7 +193,7 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Executes written SQL to insert into admin table
 	_, err = db.ExecContext(r.Context(),
 		"INSERT INTO admin (id, title) VALUES (?, ?)",
-		lastID, a.Title,
+		lastID, req.Title,
 	)
 
 	// Error message if ExecContext fails
@@ -198,9 +203,28 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Hashes password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to hash password")
+		log.Println("Password hashing error:", err)
+		return
+	}
+
+	// Adds hash and role to the users table
+	_, err = db.ExecContext(r.Context(),
+		`INSERT INTO users (id, password_hash, role) VALUES (?, ?, ?)`,
+		lastID, string(hashedPassword), "admin",
+	)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to create admin login")
+		log.Println("DB insert error:", err)
+		return
+	}
+
 	// Writes JSON response including the new ID & sends a HTTP 201 response code
 	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{
-		"message": "Admin created successfully",
+		"message": "Admin signup and creation completed successfully",
 		"adminId": lastID,
 	})
 }
