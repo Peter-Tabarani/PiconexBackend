@@ -249,6 +249,62 @@ func DeletePinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func DeletePinnedByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Error message for any request that is not DELETE
+	if r.Method != http.MethodDelete {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Extracts path variable from the request
+	vars := mux.Vars(r)
+	adminIDStr, ok := vars["admin_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID")
+		return
+	}
+
+	// Converts path variable to integer
+	adminID, err := strconv.Atoi(adminIDStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
+		log.Println("Invalid admin ID parse error:", err)
+		return
+	}
+
+	// Executes written SQL to delete pinned records for given admin
+	res, err := db.ExecContext(r.Context(),
+		"DELETE FROM pinned WHERE admin_id = ?",
+		adminID,
+	)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete pinned records")
+		log.Println("DB delete error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "No pinned records found for this admin ID")
+		return
+	}
+
+	// Writes JSON response confirming deletion & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Pinned records deleted successfully",
+	})
+}
+
 func GetStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Error message for any request that is not GET
 	if r.Method != http.MethodGet {
@@ -405,6 +461,60 @@ func DeleteStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func DeleteStuAccomByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Only allow DELETE
+	if r.Method != http.MethodDelete {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Extract student ID from path
+	vars := mux.Vars(r)
+	studentIDStr, ok := vars["id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
+		return
+	}
+
+	// Convert student ID to int
+	studentID, err := strconv.Atoi(studentIDStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+		log.Println("Invalid student ID parse error:", err)
+		return
+	}
+
+	// Execute SQL to delete all student accommodations by student ID
+	res, err := db.ExecContext(r.Context(),
+		"DELETE FROM stu_accom WHERE id = ?",
+		studentID,
+	)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete student accommodations")
+		log.Println("DB delete error:", err)
+		return
+	}
+
+	// Get number of rows affected
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// If no rows were deleted, return 404
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "No accommodations found for this student")
+		return
+	}
+
+	// Confirm success
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "All accommodations for student deleted successfully",
+	})
+}
+
 func GetStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Error message for any request that is not GET
 	if r.Method != http.MethodGet {
@@ -558,6 +668,60 @@ func DeleteStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Writes JSON response confirming deletion & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Student disability deleted successfully",
+	})
+}
+
+func DeleteStuDisByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Only allow DELETE
+	if r.Method != http.MethodDelete {
+		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Extract student ID from path
+	vars := mux.Vars(r)
+	idStr, ok := vars["id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
+		return
+	}
+
+	// Convert student ID to int
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+		log.Println("Invalid student ID parse error:", err)
+		return
+	}
+
+	// Execute SQL delete by student ID
+	res, err := db.ExecContext(r.Context(),
+		"DELETE FROM stu_dis WHERE id = ?",
+		id,
+	)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete student disabilities")
+		log.Println("DB delete error:", err)
+		return
+	}
+
+	// Get number of rows affected
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// If nothing was deleted, return 404
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "No disabilities found for this student")
+		return
+	}
+
+	// Confirm success
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "All disabilities for student deleted successfully",
 	})
 }
 
