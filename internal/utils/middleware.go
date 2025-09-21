@@ -103,7 +103,7 @@ func OwnershipMiddleware(next http.Handler) http.Handler {
 
 		// Students can only access their own ID
 		if role == "student" && userID != id {
-			WriteError(w, http.StatusForbidden, "Forbidden")
+			WriteError(w, http.StatusForbidden, "Forbidden: not owner")
 			log.Printf("Ownership error: student %d tried to access student %d\n", userID, id)
 			return
 		}

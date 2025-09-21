@@ -4,3 +4,28 @@
 2. When you sign up, a value in the users table is created with your id, password_hash, and role
 3. Third, when you login, that email and password is checked in the table and then you are issued a JWT token. After than you must include this token in every curl request from now on. Ask Chat about this.
 4. The token expires after an hour, so then you have to re-login and get another token.
+
+-- USEFUL COMMANDS --
+
+To login to admin 3:
+curl -X POST http://localhost:8080/login -H "Content-Type: application/json" \
+  -d '{
+    "email": "david.brown3@example.com",
+    "password": "secret123"
+  }'
+
+To login to student:
+curl -X POST http://localhost:8080/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "alice.anderson@university.edu",
+    "password": "secret123"
+  }'
+
+To send a request:
+curl -X GET http://localhost:8080/student \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3NTg0ODk0MjAsImlhdCI6MTc1ODQ4NTgyMH0.S2KNh5Hxmcaa1Ynv0baGb02KoMUI6sJBKDdPyaYt-JU"
+
+CURRENT ADMIN TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3NTg0ODk0MjAsImlhdCI6MTc1ODQ4NTgyMH0.S2KNh5Hxmcaa1Ynv0baGb02KoMUI6sJBKDdPyaYt-JU
+
+CURRENT STUDENT TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMjIsInJvbGUiOiJzdHVkZW50IiwiZXhwIjoxNzU4NDg4OTg1LCJpYXQiOjE3NTg0ODUzODV9.PfHlRjv2RYEDFBSY-Bddo2VVvngUy9wX0ZzH_l8-Zk0
