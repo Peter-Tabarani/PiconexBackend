@@ -16,7 +16,7 @@ func RegisterSpecificDocumentationRoutes(router *mux.Router, db *sql.DB) {
 
 	sdRouter.Handle("",
 		utils.RollMiddleware(map[string][]string{
-			"GET":  {"student", "admin"},
+			"GET":  {"admin"},
 			"POST": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
@@ -32,7 +32,7 @@ func RegisterSpecificDocumentationRoutes(router *mux.Router, db *sql.DB) {
 
 	sdRouter.Handle("/{activity_id}",
 		utils.RollMiddleware(map[string][]string{
-			"GET":    {"student", "admin"},
+			"GET":    {"admin"},
 			"PUT":    {"admin"},
 			"DELETE": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -49,16 +49,15 @@ func RegisterSpecificDocumentationRoutes(router *mux.Router, db *sql.DB) {
 		})),
 	).Methods("GET", "PUT", "DELETE", "OPTIONS")
 
-	sdRouter.Handle("/student/{id}",
-		utils.RollMiddleware(map[string][]string{
-			"GET": {"student", "admin"},
-		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
+	sdRouter.Handle(
+		"/student/{id}",
+		utils.RollMiddleware(
+			map[string][]string{
+				"GET": {"student", "admin"},
+			},
+			utils.OwnershipMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				handlers.GetSpecificDocumentationByStudentID(db, w, r)
-			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			}
-		})),
+			})),
+		),
 	).Methods("GET", "OPTIONS")
 }

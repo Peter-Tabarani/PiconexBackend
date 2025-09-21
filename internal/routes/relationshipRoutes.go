@@ -16,7 +16,7 @@ func RegisterRelationshipRoutes(router *mux.Router, db *sql.DB) {
 
 	pinnedRouter.Handle("",
 		utils.RollMiddleware(map[string][]string{
-			"GET":  {"student", "admin"},
+			"GET":  {"admin"},
 			"POST": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
@@ -45,7 +45,7 @@ func RegisterRelationshipRoutes(router *mux.Router, db *sql.DB) {
 
 	pinnedRouter.Handle("/admin/{id}",
 		utils.RollMiddleware(map[string][]string{
-			"GET": {"student", "admin"},
+			"GET": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
@@ -61,7 +61,7 @@ func RegisterRelationshipRoutes(router *mux.Router, db *sql.DB) {
 
 	stuAccomRouter.Handle("",
 		utils.RollMiddleware(map[string][]string{
-			"GET":  {"student", "admin"},
+			"GET":  {"admin"},
 			"POST": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
@@ -93,7 +93,7 @@ func RegisterRelationshipRoutes(router *mux.Router, db *sql.DB) {
 
 	stuDisRouter.Handle("",
 		utils.RollMiddleware(map[string][]string{
-			"GET":  {"student", "admin"},
+			"GET":  {"admin"},
 			"POST": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
@@ -125,7 +125,7 @@ func RegisterRelationshipRoutes(router *mux.Router, db *sql.DB) {
 
 	pocAdminRouter.Handle("",
 		utils.RollMiddleware(map[string][]string{
-			"GET":  {"student", "admin"},
+			"GET":  {"admin"},
 			"POST": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {

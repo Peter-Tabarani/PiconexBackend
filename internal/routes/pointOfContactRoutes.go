@@ -16,7 +16,7 @@ func RegisterPointOfContactRoutes(router *mux.Router, db *sql.DB) {
 
 	pocRouter.Handle("",
 		utils.RollMiddleware(map[string][]string{
-			"GET":  {"student", "admin"},
+			"GET":  {"admin"},
 			"POST": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
@@ -32,7 +32,7 @@ func RegisterPointOfContactRoutes(router *mux.Router, db *sql.DB) {
 
 	pocRouter.Handle("/{activity_id}",
 		utils.RollMiddleware(map[string][]string{
-			"GET":    {"student", "admin"},
+			"GET":    {"admin"},
 			"PUT":    {"admin"},
 			"DELETE": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +51,7 @@ func RegisterPointOfContactRoutes(router *mux.Router, db *sql.DB) {
 
 	pocRouter.Handle("/admin/{id}/date/{date}",
 		utils.RollMiddleware(map[string][]string{
-			"GET": {"student", "admin"},
+			"GET": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
@@ -64,7 +64,7 @@ func RegisterPointOfContactRoutes(router *mux.Router, db *sql.DB) {
 
 	pocRouter.Handle("/future/student/{student_id}/admin/{admin_id}",
 		utils.RollMiddleware(map[string][]string{
-			"GET": {"student", "admin"},
+			"GET": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:

@@ -49,11 +49,15 @@ func RegisterAccommodationRoutes(router *mux.Router, db *sql.DB) {
 		})),
 	).Methods("GET", "PUT", "DELETE", "OPTIONS")
 
-	accommodationRouter.Handle("/student/{id}",
-		utils.RollMiddleware(map[string][]string{
-			"GET": {"student", "admin"},
-		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			handlers.GetAccommodationsByStudentID(db, w, r)
-		})),
+	accommodationRouter.Handle(
+		"/student/{id}",
+		utils.RollMiddleware(
+			map[string][]string{
+				"GET": {"student", "admin"},
+			},
+			utils.OwnershipMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				handlers.GetAccommodationsByStudentID(db, w, r)
+			})),
+		),
 	).Methods("GET", "OPTIONS")
 }

@@ -16,7 +16,7 @@ func RegisterStudentRoutes(router *mux.Router, db *sql.DB) {
 
 	studentRouter.Handle("",
 		utils.RollMiddleware(map[string][]string{
-			"GET":  {"student", "admin"},
+			"GET":  {"admin"},
 			"POST": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
@@ -30,12 +30,13 @@ func RegisterStudentRoutes(router *mux.Router, db *sql.DB) {
 		})),
 	).Methods("GET", "POST", "OPTIONS")
 
-	studentRouter.Handle("/{id}",
+	studentRouter.Handle(
+		"/{id}",
 		utils.RollMiddleware(map[string][]string{
 			"GET":    {"student", "admin"},
-			"PUT":    {"admin"},
+			"PUT":    {"student", "admin"},
 			"DELETE": {"admin"},
-		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		}, utils.OwnershipMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
 				handlers.GetStudentByID(db, w, r)
@@ -44,14 +45,13 @@ func RegisterStudentRoutes(router *mux.Router, db *sql.DB) {
 			case http.MethodDelete:
 				handlers.DeleteStudent(db, w, r)
 			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 			}
-		})),
-	).Methods("GET", "PUT", "DELETE", "OPTIONS")
+		})))).Methods("GET", "PUT", "DELETE", "OPTIONS")
 
 	studentRouter.Handle("/name/{name}",
 		utils.RollMiddleware(map[string][]string{
-			"GET": {"student", "admin"},
+			"GET": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
