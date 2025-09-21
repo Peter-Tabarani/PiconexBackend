@@ -47,14 +47,15 @@ Student[] getStudentsByName(name: string)
 Activity[] getActivitiesByDate(date: Date)
 SpecificDocumentation[] getSpecificDocumentationByStudentID(id: number)
 PointOfContact[] getMeetingsByAdminIDAndDate(id: number, date: Date)
-PointofContact[] getPastMeetingsByStudentIDAndAdminID(id(student): number, id(admin): number)
-PointofContact[] getFutureMeetingsByStudentIDAndAdminID(id(student): number, id(admin): number)
+PointOfContact[] getPastMeetingsByStudentIDAndAdminID(id(student): number, id(admin): number)
+PointOfContact[] getFutureMeetingsByStudentIDAndAdminID(id(student): number, id(admin): number)
 Disability[] getDisabilitiesByStudentID(id: number)
 Accommodation[] getAccommodationsByStudentID(id: number)
 {Activity, name: string} getIncomingActivity(id: number)
 
 NEED TO ADD
 PersonalDocumentation[] getPersonalDocumentationByAdminID(id: number)
+PointOfContact[] getPointsOfContactByStudentID(id: number)
 
 **CREATE COMMANDS**
 CreateStudent(id: number)
