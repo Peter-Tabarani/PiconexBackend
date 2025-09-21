@@ -341,12 +341,15 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"DELETE FROM student WHERE id = ?",
 		id,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete student")
 		log.Println("DB delete error:", err)
 		return
 	}
 
+	// Gets the number of rows affected by the delete
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
@@ -354,12 +357,13 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Student not found")
 		return
 	}
 
-	// Delete the corresponding person
+	// Executes SQL to delete from person
 	res, err = db.ExecContext(r.Context(), "DELETE FROM person WHERE id = ?", id)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete person")
@@ -367,6 +371,7 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Gets the number of rows affected by the delete
 	rowsAffected, err = res.RowsAffected()
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected for person")
@@ -374,6 +379,7 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Person not found")
 		return
@@ -381,7 +387,7 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Writes JSON response confirming deletion
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
-		"message": "Student and corresponding person deleted successfully",
+		"message": "Student deleted successfully",
 	})
 }
 
