@@ -10,7 +10,7 @@ would be
 /appointments/admin/{id}/date/{date}
 
 
-**GET COMMANDS*
+**GET COMMANDS**
 
 BULK COMMANDS
 Person[] getPeople()
@@ -45,11 +45,49 @@ MISCELLANEOUS
 Student[] getPinnedByAdminID(id: number)
 Student[] getStudentsByName(name: string)
 Activity[] getActivitiesByDate(date: Date)
-Activity[] getActivityByStudentID(id: number)
 SpecificDocumentation[] getSpecificDocumentationByStudentID(id: number)
 PointOfContact[] getMeetingsByAdminIDAndDate(id: number, date: Date)
-PointofContact[] getPastMeetingsByStudentIDAndAdminID(id(student): number, id(admin): number)
-PointofContact[] getFutureMeetingsByStudentIDAndAdminID(id(student): number, id(admin): number)
+PointOfContact[] getPastMeetingsByStudentIDAndAdminID(id(student): number, id(admin): number)
+PointOfContact[] getFutureMeetingsByStudentIDAndAdminID(id(student): number, id(admin): number)
 Disability[] getDisabilitiesByStudentID(id: number)
 Accommodation[] getAccommodationsByStudentID(id: number)
 {Activity, name: string} getIncomingActivity(id: number)
+
+NEED TO ADD
+PersonalDocumentation[] getPersonalDocumentationByAdminID(id: number)
+PointOfContact[] getPointsOfContactByStudentID(id: number)
+
+**CREATE COMMANDS**
+CreateStudent(id: number)
+CreateAdmin(id: number)
+CreateAccommodation(accommodation_id: number)
+CreateDisability(disability_id: number)
+CreateSpecificDocumentation(activity_id: number)
+CreatePersonalDocumentation(activity_id: number)
+CreatePointOfContact(activity_id: number)
+
+**DELETE COMMANDS**
+DeleteStudent(id: number)
+DeleteAdmin(id: number)
+DeleteAccommodation(accommodation_id: number)
+DeleteDisability(disability_id: number)
+DeleteSpecificDocumentation(activity_id: number)
+DeletePersonalDocumentation(activity_id: number)
+DeletePointOfContact(activity_id: number)
+
+DeletePocAdminByAdminID(id: number)
+DeletePinnedByAdminID(id: number)
+DeletePersonalDocumentationByAdminID(id: number)
+DeleteStuDisByStudentID(id: number)
+DeleteStuAccomByStudentID(id: number)
+DeleteSpecificDocumentationByStudentID(id: number)
+DeletePointOfContactByStudentID(id: number)
+
+**UPDATE COMMANDS**
+UpdateStudent(id: number)
+UpdateAdmin(id: number)
+UpdateAccommodation(accommodation_id: number)
+UpdateDisability(disability_id: number)
+UpdateSpecificDocumentation(activity_id: number)
+UpdatePersonalDocumentation(activity_id: number)
+UpdatePointOfContact(activity_id: number)
