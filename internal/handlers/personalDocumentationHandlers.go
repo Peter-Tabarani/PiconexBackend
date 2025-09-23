@@ -15,12 +15,6 @@ import (
 )
 
 func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// All data being selected for this GET command
 	query := `
 		SELECT
@@ -69,12 +63,6 @@ func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 }
 
 func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	idStr, ok := vars["activity_id"]
@@ -122,12 +110,6 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 }
 
 func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not POST
-	if r.Method != http.MethodPost {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Empty variable for personal_documentation struct
 	var pd models.PersonalDocumentation
 
@@ -198,71 +180,7 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	})
 }
 
-func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not DELETE
-	if r.Method != http.MethodDelete {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
-	// Extracts path variables from the request
-	vars := mux.Vars(r)
-	idStr, ok := vars["activity_id"]
-	if !ok {
-		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
-		return
-	}
-
-	// Converts the "activity_id" string to an integer
-	activityID, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
-		log.Println("Invalid ID parse error:", err)
-		return
-	}
-
-	// Executes SQL to delete from activity (will cascade)
-	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM activity WHERE activity_id=?",
-		activityID,
-	)
-
-	// Error message if ExecContext fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete personal documentation")
-		log.Println("DB delete error:", err)
-		return
-	}
-
-	// Gets the number of rows affected by the delete
-	rowsAffected, err := res.RowsAffected()
-
-	// Error message if RowsAffected fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
-		log.Println("RowsAffected error:", err)
-		return
-	}
-
-	// Error message if no rows were deleted
-	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "Personal documentation not found")
-		return
-	}
-
-	// Writes JSON response confirming deletion & sends a HTTP 200 response code
-	utils.WriteJSON(w, http.StatusOK, map[string]string{
-		"message": "Personal documentation deleted successfully",
-	})
-}
-
 func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not PUT
-	if r.Method != http.MethodPut {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	idStr, ok := vars["activity_id"]
@@ -351,5 +269,57 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	// Writes JSON response confirming update & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Personal documentation updated successfully",
+	})
+}
+
+func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
+	idStr, ok := vars["activity_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
+		return
+	}
+
+	// Converts the "activity_id" string to an integer
+	activityID, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// Executes SQL to delete from activity (will cascade)
+	res, err := db.ExecContext(r.Context(),
+		"DELETE FROM activity WHERE activity_id=?",
+		activityID,
+	)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete personal documentation")
+		log.Println("DB delete error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Personal documentation not found")
+		return
+	}
+
+	// Writes JSON response confirming deletion & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Personal documentation deleted successfully",
 	})
 }

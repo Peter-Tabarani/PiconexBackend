@@ -16,12 +16,6 @@ import (
 )
 
 func GetPinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// All data being selected for this GET command
 	query := `
 		SELECT admin_id, student_id
@@ -67,12 +61,6 @@ func GetPinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetPinnedByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	idStr, ok := vars["id"]
@@ -145,12 +133,6 @@ func GetPinnedByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func CreatePinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not POST
-	if r.Method != http.MethodPost {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Empty variable for request struct
 	var req models.Pinned
 	decoder := json.NewDecoder(r.Body)
@@ -187,12 +169,6 @@ func CreatePinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func DeletePinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not DELETE
-	if r.Method != http.MethodDelete {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	adminIDStr, ok1 := vars["admin_id"]
@@ -250,12 +226,6 @@ func DeletePinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func DeletePinnedByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not DELETE
-	if r.Method != http.MethodDelete {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variable from the request
 	vars := mux.Vars(r)
 	adminIDStr, ok := vars["admin_id"]
@@ -306,12 +276,6 @@ func DeletePinnedByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// All data being selected for this GET command
 	query := `
 		SELECT id, accommodation_id
@@ -357,12 +321,6 @@ func GetStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not POST
-	if r.Method != http.MethodPost {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Empty variable for request struct
 	var req models.StudentAccommodation
 	decoder := json.NewDecoder(r.Body)
@@ -399,12 +357,6 @@ func CreateStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not DELETE
-	if r.Method != http.MethodDelete {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	studentIDStr, ok1 := vars["id"]
@@ -516,12 +468,6 @@ func DeleteStuAccomByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Reques
 }
 
 func GetStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// All data being selected for this GET command
 	query := `
 		SELECT id, disability_id
@@ -567,12 +513,6 @@ func GetStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not POST
-	if r.Method != http.MethodPost {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Empty variable for request struct
 	var req models.StudentDisability
 	decoder := json.NewDecoder(r.Body)
@@ -609,12 +549,6 @@ func CreateStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not DELETE
-	if r.Method != http.MethodDelete {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	idStr, ok1 := vars["id"]
@@ -726,12 +660,6 @@ func DeleteStuDisByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request)
 }
 
 func GetPocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// All data being selected for this GET command
 	query := `
 		SELECT activity_id, id
@@ -778,12 +706,6 @@ func GetPocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func CreatePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not POST
-	if r.Method != http.MethodPost {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Empty variable for request struct
 	var req models.PocAdmin
 	decoder := json.NewDecoder(r.Body)

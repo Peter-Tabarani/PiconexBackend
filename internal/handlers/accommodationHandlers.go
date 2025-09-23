@@ -16,12 +16,6 @@ import (
 )
 
 func GetAccommodations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// All data being selected for this GET command
 	query := `
         SELECT accommodation_id, name, description
@@ -67,12 +61,6 @@ func GetAccommodations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	idStr, ok := vars["accommodation_id"]
@@ -120,12 +108,6 @@ func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	idStr, ok := vars["id"]
@@ -190,12 +172,6 @@ func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Req
 }
 
 func CreateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not POST
-	if r.Method != http.MethodPost {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Empty variable for accommodation struct
 	var a models.Accommodation
 
@@ -244,71 +220,7 @@ func CreateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func DeleteAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not DELETE
-	if r.Method != http.MethodDelete {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
-	// Extracts path variables from the request
-	vars := mux.Vars(r)
-	idStr, ok := vars["accommodation_id"]
-	if !ok {
-		utils.WriteError(w, http.StatusBadRequest, "Missing accommodation ID")
-		return
-	}
-
-	// Converts the "accommodation_id" string to an integer
-	accommodationID, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid accommodation ID")
-		log.Println("Invalid ID parse error:", err)
-		return
-	}
-
-	// Executes written SQL to delete the accommodation
-	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM accommodation WHERE accommodation_id = ?",
-		accommodationID,
-	)
-
-	// Error message if ExecContext fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete accommodation")
-		log.Println("DB delete error:", err)
-		return
-	}
-
-	// Gets the number of rows affected by the delete
-	rowsAffected, err := res.RowsAffected()
-
-	// Error message if RowsAffected fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
-		log.Println("RowsAffected error:", err)
-		return
-	}
-
-	// Error message if no rows were deleted
-	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "Accommodation not found")
-		return
-	}
-
-	// Writes JSON response confirming deletion & sends a HTTP 200 response code
-	utils.WriteJSON(w, http.StatusOK, map[string]string{
-		"message": "Accommodation deleted successfully",
-	})
-}
-
 func UpdateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not PUT
-	if r.Method != http.MethodPut {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	idStr, ok := vars["accommodation_id"]
@@ -376,5 +288,57 @@ func UpdateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Writes JSON response confirming update & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Accommodation updated successfully",
+	})
+}
+
+func DeleteAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
+	idStr, ok := vars["accommodation_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing accommodation ID")
+		return
+	}
+
+	// Converts the "accommodation_id" string to an integer
+	accommodationID, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid accommodation ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// Executes written SQL to delete the accommodation
+	res, err := db.ExecContext(r.Context(),
+		"DELETE FROM accommodation WHERE accommodation_id = ?",
+		accommodationID,
+	)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete accommodation")
+		log.Println("DB delete error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Accommodation not found")
+		return
+	}
+
+	// Writes JSON response confirming deletion & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Accommodation deleted successfully",
 	})
 }
