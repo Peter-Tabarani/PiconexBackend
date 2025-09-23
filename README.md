@@ -41,8 +41,8 @@ curl -X POST http://localhost:8080/specific-documentation \
     "file": "base64encodedfile"
   }'
 
-curl -X GET http://localhost:8080/specific-documentation \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3NTg1ODg5MTcsImlhdCI6MTc1ODU4NTMxN30.3QapKom4kU2uEXNWXM_by2wML8M-tAEXqzOI0Yr8z1w"
+curl -X GET http://localhost:8080/specific-documentation/192 \
+  -H "Authorization: Bearer superkey"
 
 curl -X GET http://localhost:8080/specific-documentation/220 \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMjIsInJvbGUiOiJzdHVkZW50IiwiZXhwIjoxNzU4NTg4Nzg4LCJpYXQiOjE3NTg1ODUxODh9.GrkAgTQaXtOx8hwwF6XsiqE1Vdp0PqQ_rL9qut-QxqI"
