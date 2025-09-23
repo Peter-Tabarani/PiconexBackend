@@ -11,7 +11,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func SignupHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+func SignupStudentHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Error message for any request that is not POST
 	if r.Method != http.MethodPost {
 		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -149,7 +149,7 @@ func LoginHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"token": token})
 }
 
-func AdminSignupStudentHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+func SignupHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Error message for any request that is not POST
 	if r.Method != http.MethodPost {
 		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")

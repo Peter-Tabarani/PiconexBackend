@@ -14,7 +14,7 @@ curl -X POST http://localhost:8080/login -H "Content-Type: application/json" \
     "password": "secret123"
   }'
 
-To login to student:
+To login to student 122:
 curl -X POST http://localhost:8080/login \
   -H "Content-Type: application/json" \
   -d '{
@@ -24,8 +24,25 @@ curl -X POST http://localhost:8080/login \
 
 To send a request:
 curl -X GET http://localhost:8080/student \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3NTg0ODk0MjAsImlhdCI6MTc1ODQ4NTgyMH0.S2KNh5Hxmcaa1Ynv0baGb02KoMUI6sJBKDdPyaYt-JU"
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3NTg1ODg5MTcsImlhdCI6MTc1ODU4NTMxN30.3QapKom4kU2uEXNWXM_by2wML8M-tAEXqzOI0Yr8z1w"
 
-CURRENT ADMIN TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3NTg0ODk0MjAsImlhdCI6MTc1ODQ4NTgyMH0.S2KNh5Hxmcaa1Ynv0baGb02KoMUI6sJBKDdPyaYt-JU
+CURRENT ADMIN TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3NTg1ODg5MTcsImlhdCI6MTc1ODU4NTMxN30.3QapKom4kU2uEXNWXM_by2wML8M-tAEXqzOI0Yr8z1w
 
-CURRENT STUDENT TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMjIsInJvbGUiOiJzdHVkZW50IiwiZXhwIjoxNzU4NDg4OTg1LCJpYXQiOjE3NTg0ODUzODV9.PfHlRjv2RYEDFBSY-Bddo2VVvngUy9wX0ZzH_l8-Zk0
+CURRENT STUDENT TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMjIsInJvbGUiOiJzdHVkZW50IiwiZXhwIjoxNzU4NTg4Nzg4LCJpYXQiOjE3NTg1ODUxODh9.GrkAgTQaXtOx8hwwF6XsiqE1Vdp0PqQ_rL9qut-QxqI
+
+curl -X POST http://localhost:8080/specific-documentation \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMjIsInJvbGUiOiJzdHVkZW50IiwiZXhwIjoxNzU4NTg4Nzg4LCJpYXQiOjE3NTg1ODUxODh9.GrkAgTQaXtOx8hwwF6XsiqE1Vdp0PqQ_rL9qut-QxqI" \
+  -d '{
+    "id": 122,
+    "doc_type": "Medical",
+    "date": "2025-09-22",
+    "time": "09:00",
+    "file": "base64encodedfile"
+  }'
+
+curl -X GET http://localhost:8080/specific-documentation \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3NTg1ODg5MTcsImlhdCI6MTc1ODU4NTMxN30.3QapKom4kU2uEXNWXM_by2wML8M-tAEXqzOI0Yr8z1w"
+
+curl -X GET http://localhost:8080/specific-documentation/220 \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMjIsInJvbGUiOiJzdHVkZW50IiwiZXhwIjoxNzU4NTg4Nzg4LCJpYXQiOjE3NTg1ODUxODh9.GrkAgTQaXtOx8hwwF6XsiqE1Vdp0PqQ_rL9qut-QxqI"
