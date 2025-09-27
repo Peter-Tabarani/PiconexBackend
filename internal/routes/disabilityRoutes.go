@@ -14,7 +14,8 @@ func RegisterDisabilityRoutes(router *mux.Router, db *sql.DB) {
 	disabilityRouter := router.PathPrefix("/disability").Subrouter()
 	disabilityRouter.Use(utils.WithCORS, utils.AuthMiddleware)
 
-	disabilityRouter.Handle("",
+	disabilityRouter.Handle(
+		"",
 		utils.RollMiddleware(map[string][]string{
 			"GET":  {"student", "admin"},
 			"POST": {"admin"},
@@ -25,12 +26,13 @@ func RegisterDisabilityRoutes(router *mux.Router, db *sql.DB) {
 			case http.MethodPost:
 				handlers.CreateDisability(db, w, r)
 			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 			}
 		})),
 	).Methods("GET", "POST", "OPTIONS")
 
-	disabilityRouter.Handle("/{disability_id}",
+	disabilityRouter.Handle(
+		"/{disability_id}",
 		utils.RollMiddleware(map[string][]string{
 			"GET":    {"student", "admin"},
 			"PUT":    {"admin"},
@@ -44,21 +46,20 @@ func RegisterDisabilityRoutes(router *mux.Router, db *sql.DB) {
 			case http.MethodDelete:
 				handlers.DeleteDisability(db, w, r)
 			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 			}
 		})),
 	).Methods("GET", "PUT", "DELETE", "OPTIONS")
 
-	disabilityRouter.Handle("/student/{id}",
-		utils.RollMiddleware(map[string][]string{
-			"GET": {"student", "admin"},
-		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
+	disabilityRouter.Handle(
+		"/student/{id}",
+		utils.RollMiddleware(
+			map[string][]string{
+				"GET": {"student", "admin"},
+			},
+			utils.OwnershipMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				handlers.GetDisabilitiesByStudentID(db, w, r)
-			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			}
-		})),
+			})),
+		),
 	).Methods("GET", "OPTIONS")
 }

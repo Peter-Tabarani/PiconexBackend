@@ -14,12 +14,6 @@ import (
 )
 
 func GetActivities(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// All data being selected for this GET command
 	query := `
 		SELECT
@@ -67,12 +61,6 @@ func GetActivities(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetActivityByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	idStr, ok := vars["activity_id"]
@@ -120,12 +108,6 @@ func GetActivityByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetActivitiesByDate(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	date := vars["date"]

@@ -16,12 +16,6 @@ import (
 )
 
 func GetStudents(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// All data being selected for this GET command
 	query := `
 		SELECT
@@ -78,12 +72,6 @@ func GetStudents(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetStudentByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	idStr, ok := vars["id"]
@@ -157,12 +145,6 @@ func GetStudentByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetStudentsByName(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	raw, ok := vars["name"]
@@ -243,12 +225,6 @@ func GetStudentsByName(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not POST
-	if r.Method != http.MethodPost {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Empty variables for student struct
 	var s models.Student
 
@@ -313,85 +289,7 @@ func CreateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not DELETE
-	if r.Method != http.MethodDelete {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
-	// Extracts path variables from the request
-	vars := mux.Vars(r)
-	idStr, ok := vars["id"]
-	if !ok {
-		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
-		return
-	}
-
-	// Converts the "id" string to an integer
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
-		log.Println("Invalid ID parse error:", err)
-		return
-	}
-
-	// Executes SQL to delete from student
-	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM student WHERE id = ?",
-		id,
-	)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete student")
-		log.Println("DB delete error:", err)
-		return
-	}
-
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
-		log.Println("RowsAffected error:", err)
-		return
-	}
-
-	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "Student not found")
-		return
-	}
-
-	// Delete the corresponding person
-	res, err = db.ExecContext(r.Context(), "DELETE FROM person WHERE id = ?", id)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete person")
-		log.Println("DB delete person error:", err)
-		return
-	}
-
-	rowsAffected, err = res.RowsAffected()
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected for person")
-		log.Println("RowsAffected person error:", err)
-		return
-	}
-
-	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "Person not found")
-		return
-	}
-
-	// Writes JSON response confirming deletion
-	utils.WriteJSON(w, http.StatusOK, map[string]string{
-		"message": "Student and corresponding person deleted successfully",
-	})
-}
-
 func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Only allow PUT method
-	if r.Method != http.MethodPut {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	idStr, ok := vars["id"]
@@ -477,5 +375,77 @@ func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Writes JSON response confirming update & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Student updated successfully",
+	})
+}
+
+func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
+	idStr, ok := vars["id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
+		return
+	}
+
+	// Converts the "id" string to an integer
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// Executes SQL to delete from student
+	res, err := db.ExecContext(r.Context(),
+		"DELETE FROM student WHERE id = ?",
+		id,
+	)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete student")
+		log.Println("DB delete error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Student not found")
+		return
+	}
+
+	// Executes SQL to delete from person
+	res, err = db.ExecContext(r.Context(), "DELETE FROM person WHERE id = ?", id)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete person")
+		log.Println("DB delete person error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err = res.RowsAffected()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected for person")
+		log.Println("RowsAffected person error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Person not found")
+		return
+	}
+
+	// Writes JSON response confirming deletion
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Student deleted successfully",
 	})
 }

@@ -16,12 +16,6 @@ import (
 )
 
 func GetPointsOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// All data being selected for this GET command
 	query := `
 		SELECT
@@ -76,12 +70,6 @@ func GetPointsOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetPointOfContactByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	activityIDStr, ok := vars["activity_id"]
@@ -135,12 +123,6 @@ func GetPointOfContactByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetPointsOfContactByAdminIDAndDate(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	idStr, ok := vars["id"]
@@ -214,12 +196,6 @@ func GetPointsOfContactByAdminIDAndDate(db *sql.DB, w http.ResponseWriter, r *ht
 }
 
 func GetFuturePointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	studentIDStr, ok1 := vars["student_id"]
@@ -302,12 +278,6 @@ func GetFuturePointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWr
 }
 
 func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not POST
-	if r.Method != http.MethodPost {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Empty variable for PointOfContact struct
 	var poc models.PointOfContact
 
@@ -365,69 +335,7 @@ func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func DeletePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not DELETE
-	if r.Method != http.MethodDelete {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
-	// Extracts path variables from the request
-	vars := mux.Vars(r)
-	activityIDStr, ok := vars["activity_id"]
-	if !ok {
-		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
-		return
-	}
-
-	// Converts the "activity_id" string to an integer
-	activityID, err := strconv.Atoi(activityIDStr)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
-		log.Println("Invalid ID parse error:", err)
-		return
-	}
-
-	// Executes written SQL to delete the point of contact
-	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM activity WHERE activity_id = ?", activityID)
-
-	// Error message if ExecContext fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete point of contact")
-		log.Println("DB delete activity error:", err)
-		return
-	}
-
-	// Gets the number of rows affected by the delete
-	rowsAffected, err := res.RowsAffected()
-
-	// Error message if RowsAffected fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
-		log.Println("RowsAffected error:", err)
-		return
-	}
-
-	// Error message if no rows were deleted
-	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "Point of contact not found")
-		return
-	}
-
-	// Writes JSON response confirming deletion & sends a HTTP 200 response code
-	utils.WriteJSON(w, http.StatusOK, map[string]string{
-		"message": "Point of Contact deleted successfully",
-	})
-}
-
 func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not PUT
-	if r.Method != http.MethodPut {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	activityIDStr, ok := vars["activity_id"]
@@ -501,5 +409,55 @@ func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Writes JSON response confirming update & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Point of Contact updated successfully",
+	})
+}
+
+func DeletePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
+	activityIDStr, ok := vars["activity_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
+		return
+	}
+
+	// Converts the "activity_id" string to an integer
+	activityID, err := strconv.Atoi(activityIDStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// Executes written SQL to delete the point of contact
+	res, err := db.ExecContext(r.Context(),
+		"DELETE FROM activity WHERE activity_id = ?", activityID)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete point of contact")
+		log.Println("DB delete activity error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Point of contact not found")
+		return
+	}
+
+	// Writes JSON response confirming deletion & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "Point of Contact deleted successfully",
 	})
 }

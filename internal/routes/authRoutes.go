@@ -16,7 +16,7 @@ func RegisterAuthRoutes(router *mux.Router, db *sql.DB) {
 	publicAuth.HandleFunc("/signup/student", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
-			handlers.SignupHandler(db, w, r)
+			handlers.SignupStudentHandler(db, w, r)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -40,7 +40,7 @@ func RegisterAuthRoutes(router *mux.Router, db *sql.DB) {
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodPost:
-				handlers.AdminSignupStudentHandler(db, w, r)
+				handlers.SignupHandler(db, w, r)
 			default:
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			}

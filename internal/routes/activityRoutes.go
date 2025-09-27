@@ -16,7 +16,7 @@ func RegisterActivityRoutes(router *mux.Router, db *sql.DB) {
 
 	activityRouter.Handle("",
 		utils.RollMiddleware(map[string][]string{
-			"GET": {"student", "admin"},
+			"GET": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
@@ -29,7 +29,7 @@ func RegisterActivityRoutes(router *mux.Router, db *sql.DB) {
 
 	activityRouter.Handle("/{activity_id}",
 		utils.RollMiddleware(map[string][]string{
-			"GET": {"student", "admin"},
+			"GET": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
@@ -42,7 +42,7 @@ func RegisterActivityRoutes(router *mux.Router, db *sql.DB) {
 
 	activityRouter.Handle("/date/{date}",
 		utils.RollMiddleware(map[string][]string{
-			"GET": {"student", "admin"},
+			"GET": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:

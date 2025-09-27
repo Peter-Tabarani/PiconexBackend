@@ -15,12 +15,6 @@ import (
 )
 
 func GetPersons(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// All data being selected for this GET command
 	query := `
 		SELECT
@@ -73,12 +67,6 @@ func GetPersons(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetPersonByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not GET
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	idStr, ok := vars["id"]

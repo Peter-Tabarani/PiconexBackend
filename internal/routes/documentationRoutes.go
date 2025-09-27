@@ -15,7 +15,7 @@ func RegisterDocumentationRoutes(router *mux.Router, db *sql.DB) {
 
 	documentationRouter.Handle("",
 		utils.RollMiddleware(map[string][]string{
-			"GET": {"student", "admin"},
+			"GET": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
@@ -28,7 +28,7 @@ func RegisterDocumentationRoutes(router *mux.Router, db *sql.DB) {
 
 	documentationRouter.Handle("/{activity_id}",
 		utils.RollMiddleware(map[string][]string{
-			"GET": {"student", "admin"},
+			"GET": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:

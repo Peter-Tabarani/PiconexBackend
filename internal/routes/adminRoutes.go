@@ -16,7 +16,7 @@ func RegisterAdminRoutes(router *mux.Router, db *sql.DB) {
 
 	adminRouter.Handle("",
 		utils.RollMiddleware(map[string][]string{
-			"GET":  {"student", "admin"},
+			"GET":  {"admin"},
 			"POST": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
@@ -32,7 +32,7 @@ func RegisterAdminRoutes(router *mux.Router, db *sql.DB) {
 
 	adminRouter.Handle("/{id}",
 		utils.RollMiddleware(map[string][]string{
-			"GET":    {"student", "admin"},
+			"GET":    {"admin"},
 			"PUT":    {"admin"},
 			"DELETE": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

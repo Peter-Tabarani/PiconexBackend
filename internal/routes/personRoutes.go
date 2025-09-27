@@ -15,7 +15,7 @@ func RegisterPersonRoutes(router *mux.Router, db *sql.DB) {
 
 	personRouter.Handle("",
 		utils.RollMiddleware(map[string][]string{
-			"GET": {"student", "admin"},
+			"GET": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
@@ -28,7 +28,7 @@ func RegisterPersonRoutes(router *mux.Router, db *sql.DB) {
 
 	personRouter.Handle("/{id}",
 		utils.RollMiddleware(map[string][]string{
-			"GET": {"student", "admin"},
+			"GET": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:

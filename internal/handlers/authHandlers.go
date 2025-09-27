@@ -11,13 +11,100 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func SignupHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not POST
-	if r.Method != http.MethodPost {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+func LoginHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Local struct for login request body
+	type LoginRequest struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	// Decode JSON request into "req" variable
+	var req LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
+	// Variables for DB values
+	var userID int
+	var passwordHash, role string
+
+	// Look up user by email in users + person tables
+	err := db.QueryRow(`
+		SELECT u.id, u.password_hash, u.role
+		FROM users u
+		JOIN person p ON p.id = u.id
+		WHERE p.email = ?`, req.Email,
+	).Scan(&userID, &passwordHash, &role)
+
+	// Return unauthorized if not found
+	if err != nil {
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		return
+	}
+
+	// Compare provided password with stored hash
+	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)); err != nil {
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		return
+	}
+
+	// Generate JWT token
+	token, err := utils.CreateJWT(userID, role)
+	if err != nil {
+		http.Error(w, "Failed to create token", http.StatusInternalServerError)
+		return
+	}
+
+	// Return token in JSON response
+	json.NewEncoder(w).Encode(map[string]string{"token": token})
+}
+
+func SignupHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Local struct for request
+	type AdminSignupStudentRequest struct {
+		ID       int    `json:"id"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	// Decodes JSON body from the request into "req" variable
+	var req AdminSignupStudentRequest
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
+	if err := decoder.Decode(&req); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
+		log.Println("JSON decode error:", err)
+		return
+	}
+
+	// Hashes password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to hash password")
+		log.Println("Password hashing error:", err)
+		return
+	}
+
+	// Adds hash and role to the users table
+	_, err = db.ExecContext(r.Context(),
+		`INSERT INTO users (id, password_hash, role) VALUES (?, ?, ?)`,
+		req.ID, string(hashedPassword), "student",
+	)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to create student login")
+		log.Println("DB insert error:", err)
+		return
+	}
+
+	// Writes JSON response including the new ID & sends a HTTP 201 response code
+	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{
+		"message":   "Student signup completed successfully",
+		"studentId": req.ID,
+	})
+}
+
+func SignupStudentHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Empty variables for student struct
 	type CreateStudentRequest struct {
 		models.Student
@@ -102,99 +189,5 @@ func SignupHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{
 		"message":   "Student signup and creation completed successfully",
 		"studentId": lastID,
-	})
-}
-
-func LoginHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not POST
-	if r.Method != http.MethodPost {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
-	type LoginRequest struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-
-	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
-
-	var userID int
-	var passwordHash, role string
-	err := db.QueryRow(`SELECT u.id, u.password_hash, u.role
-                        FROM users u
-                        JOIN person p ON p.id = u.id
-                        WHERE p.email = ?`, req.Email).
-		Scan(&userID, &passwordHash, &role)
-	if err != nil {
-		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
-		return
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)); err != nil {
-		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
-		return
-	}
-
-	token, err := utils.CreateJWT(userID, role)
-	if err != nil {
-		http.Error(w, "Failed to create token", http.StatusInternalServerError)
-		return
-	}
-
-	json.NewEncoder(w).Encode(map[string]string{"token": token})
-}
-
-func AdminSignupStudentHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not POST
-	if r.Method != http.MethodPost {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
-	// Local struct for request
-	type AdminSignupStudentRequest struct {
-		ID       int    `json:"id"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-
-	// Decodes JSON body from the request into "req" variable
-	var req AdminSignupStudentRequest
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
-	if err := decoder.Decode(&req); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
-		log.Println("JSON decode error:", err)
-		return
-	}
-
-	// Hashes password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to hash password")
-		log.Println("Password hashing error:", err)
-		return
-	}
-
-	// Adds hash and role to the users table
-	_, err = db.ExecContext(r.Context(),
-		`INSERT INTO users (id, password_hash, role) VALUES (?, ?, ?)`,
-		req.ID, string(hashedPassword), "student",
-	)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to create student login")
-		log.Println("DB insert error:", err)
-		return
-	}
-
-	// Writes JSON response including the new ID & sends a HTTP 201 response code
-	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{
-		"message":   "Student signup completed successfully",
-		"studentId": req.ID,
 	})
 }
