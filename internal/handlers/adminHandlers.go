@@ -230,13 +230,13 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not DELETE
+	// Only allow DELETE
 	if r.Method != http.MethodDelete {
 		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	// Extracts path variables from the request
+	// Extract ID from path
 	vars := mux.Vars(r)
 	idStr, ok := vars["id"]
 	if !ok {
@@ -244,7 +244,7 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Converts the "id" string to an integer
+	// Convert ID string to integer
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
@@ -252,35 +252,52 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Executes written SQL to delete the admin
-	res, err := db.ExecContext(r.Context(), "DELETE FROM person WHERE id = ?", id)
-
-	// Error message if ExecContext fails
+	// Delete from admin
+	res, err := db.ExecContext(r.Context(),
+		"DELETE FROM admin WHERE id = ?",
+		id,
+	)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete admin")
-		log.Println("DB delete error:", err)
+		log.Println("DB delete admin error:", err)
 		return
 	}
 
-	// Gets the number of rows affected by the delete
 	rowsAffected, err := res.RowsAffected()
-
-	// Error message if RowsAffected fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
-		log.Println("RowsAffected error:", err)
+		log.Println("RowsAffected admin error:", err)
 		return
 	}
 
-	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Admin not found")
 		return
 	}
 
-	// Writes JSON response confirming deletion & sends a HTTP 200 response code
+	// Delete the corresponding person
+	res, err = db.ExecContext(r.Context(), "DELETE FROM person WHERE id = ?", id)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete person")
+		log.Println("DB delete person error:", err)
+		return
+	}
+
+	rowsAffected, err = res.RowsAffected()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected for person")
+		log.Println("RowsAffected person error:", err)
+		return
+	}
+
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Person not found")
+		return
+	}
+
+	// Success response
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
-		"message": "Admin deleted successfully",
+		"message": "Admin and corresponding person deleted successfully",
 	})
 }
 
