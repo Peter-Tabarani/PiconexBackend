@@ -91,3 +91,12 @@ UpdateDisability(disability_id: number)
 UpdateSpecificDocumentation(activity_id: number)
 UpdatePersonalDocumentation(activity_id: number)
 UpdatePointOfContact(activity_id: number)
+
+OTHER THINGS:
+Need to add:
+PointOfContact formatter. The handler needs to pull the Student data along with the PointOfContact. New route?
+ActivitiesSummaryByDate formatter. The handler needs to pull the respective other data. Definitely new route
+ActivitiesSummaryByStudent formatter. The handler needs to pull the respective other data. Definitely new route
+Need a getPastPointsOfContactByStudentIDAndAdminID
+Need to modify the getAccommodationsByStudentID handler to return all accommodations and a hasAccommodations addition
+Need to modify the getDisabilitiesByStudentID handler to return all disabilities and a hasDisability addition
