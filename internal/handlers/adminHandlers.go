@@ -9,7 +9,6 @@ import (
 
 	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 	"github.com/Peter-Tabarani/PiconexBackend/internal/utils"
-	"golang.org/x/crypto/bcrypt"
 
 	"github.com/gorilla/mux"
 
@@ -126,87 +125,67 @@ func GetAdminByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Empty variable for admin struct
-	type CreateAdminRequest struct {
-		models.Admin
-		Password string `json:"password"`
-	}
+	var a models.Admin
 
-	// Decodes JSON body from the request into "req" variable
-	var req CreateAdminRequest
+	// Decodes JSON body from the request into "a" variable
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
-	if err := decoder.Decode(&req); err != nil {
+	if err := decoder.Decode(&a); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
 		log.Println("JSON decode error:", err)
 		return
 	}
 
-	// TECH DEBT: Add validation of required fields
+	// TECH DEBT: Validates required fields
 
-	// Executes written SQL to insert a new person
+	// Executes SQL to insert into person table
 	res, err := db.ExecContext(r.Context(),
 		`INSERT INTO person (
-		first_name, preferred_name, middle_name, last_name,
-		email, phone_number, pronouns, sex, gender,
-		birthday, address, city, state, zip_code, country
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		req.FirstName, req.PreferredName, req.MiddleName, req.LastName,
-		req.Email, req.PhoneNumber, req.Pronouns, req.Sex, req.Gender,
-		req.Birthday, req.Address, req.City, req.State, req.ZipCode, req.Country,
+			first_name, preferred_name, middle_name, last_name, email,
+			phone_number, pronouns, sex, gender, birthday,
+			address, city, state, zip_code, country
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+
+		a.FirstName, a.PreferredName, a.MiddleName, a.LastName,
+		a.Email, a.PhoneNumber, a.Pronouns, a.Sex, a.Gender, a.Birthday,
+		a.Address, a.City, a.State, a.ZipCode, a.Country,
 	)
 
 	// Error message if ExecContext fails
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert admin")
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert into person")
 		log.Println("DB insert error:", err)
 		return
 	}
 
-	// Gets the ID of the newly inserted person
+	// Gets the last inserted person ID
 	lastID, err := res.LastInsertId()
 
 	// Error message if LastInsertId fails
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to get last insert ID")
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get inserted person ID")
 		log.Println("LastInsertId error:", err)
 		return
 	}
 
-	// Executes written SQL to insert into admin table
+	// Executes SQL to insert into admin table
 	_, err = db.ExecContext(r.Context(),
-		"INSERT INTO admin (id, title) VALUES (?, ?)",
-		lastID, req.Title,
+		`INSERT INTO admin (id, title)
+		VALUES (?, ?)`,
+
+		lastID, a.Title,
 	)
 
 	// Error message if ExecContext fails
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert admin title")
-		log.Println("DB insert error:", err)
-		return
-	}
-
-	// Hashes password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to hash password")
-		log.Println("Password hashing error:", err)
-		return
-	}
-
-	// Adds hash and role to the users table
-	_, err = db.ExecContext(r.Context(),
-		`INSERT INTO users (id, password_hash, role) VALUES (?, ?, ?)`,
-		lastID, string(hashedPassword), "admin",
-	)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to create admin login")
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert into admin")
 		log.Println("DB insert error:", err)
 		return
 	}
 
 	// Writes JSON response including the new ID & sends a HTTP 201 response code
 	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{
-		"message": "Admin signup and creation completed successfully",
+		"message": "Admin created successfully",
 		"adminId": lastID,
 	})
 }
