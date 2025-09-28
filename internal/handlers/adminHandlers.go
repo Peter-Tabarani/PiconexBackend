@@ -293,20 +293,19 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Executes written SQL to delete the admin
-	res, err := db.ExecContext(r.Context(), "DELETE FROM person WHERE id = ?", id)
-
-	// Error message if ExecContext fails
+	// Executes SQL to delete from admin
+	res, err := db.ExecContext(r.Context(),
+		"DELETE FROM admin WHERE id = ?",
+		id,
+	)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete admin")
 		log.Println("DB delete error:", err)
 		return
 	}
 
-	// Gets the number of rows affected by the delete
+	// Gets the number of rows affected
 	rowsAffected, err := res.RowsAffected()
-
-	// Error message if RowsAffected fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
 		log.Println("RowsAffected error:", err)
@@ -319,7 +318,7 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Delete the corresponding person
+	// Executes SQL to delete from person
 	res, err = db.ExecContext(r.Context(), "DELETE FROM person WHERE id = ?", id)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete person")
@@ -327,6 +326,7 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Gets the number of rows affected for person
 	rowsAffected, err = res.RowsAffected()
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected for person")
@@ -334,13 +334,14 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Person not found")
 		return
 	}
 
-	// Success response
+	// Writes JSON response confirming deletion
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
-		"message": "Admin and corresponding person deleted successfully",
+		"message": "Admin deleted successfully",
 	})
 }
