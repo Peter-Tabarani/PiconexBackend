@@ -131,17 +131,23 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}
 
-	// Decodes JSON body from the request into "req" variable
-	var req CreateAdminRequest
+	// Decodes JSON body from the request into "a" variable
+	var a CreateAdminRequest
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
-	if err := decoder.Decode(&req); err != nil {
+	if err := decoder.Decode(&a); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
 		log.Println("JSON decode error:", err)
 		return
 	}
 
-	// TECH DEBT: Add validation of required fields
+	// Validates required fields
+	if a.FirstName == "" || a.LastName == "" || a.Email == "" || a.PhoneNumber == "" ||
+		a.Sex == "" || a.Birthday == "" || a.Address == "" || a.City == "" ||
+		a.Country == "" || a.Title == "" || a.Password == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
 
 	// Executes written SQL to insert a new person
 	res, err := db.ExecContext(r.Context(),
@@ -150,9 +156,9 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		email, phone_number, pronouns, sex, gender,
 		birthday, address, city, state, zip_code, country
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		req.FirstName, req.PreferredName, req.MiddleName, req.LastName,
-		req.Email, req.PhoneNumber, req.Pronouns, req.Sex, req.Gender,
-		req.Birthday, req.Address, req.City, req.State, req.ZipCode, req.Country,
+		a.FirstName, a.PreferredName, a.MiddleName, a.LastName,
+		a.Email, a.PhoneNumber, a.Pronouns, a.Sex, a.Gender,
+		a.Birthday, a.Address, a.City, a.State, a.ZipCode, a.Country,
 	)
 
 	// Error message if ExecContext fails
@@ -175,7 +181,7 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Executes written SQL to insert into admin table
 	_, err = db.ExecContext(r.Context(),
 		"INSERT INTO admin (id, title) VALUES (?, ?)",
-		lastID, req.Title,
+		lastID, a.Title,
 	)
 
 	// Error message if ExecContext fails
@@ -186,7 +192,7 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Hashes password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(a.Password), bcrypt.DefaultCost)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to hash password")
 		log.Println("Password hashing error:", err)
@@ -240,7 +246,13 @@ func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TECH DEBT: Validate required fields
+	// Validates required fields
+	if a.FirstName == "" || a.LastName == "" || a.Email == "" || a.PhoneNumber == "" ||
+		a.Sex == "" || a.Birthday == "" || a.Address == "" || a.City == "" ||
+		a.Country == "" || a.Title == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
 
 	// Executes written SQL to update the person data
 	_, err = db.ExecContext(r.Context(),

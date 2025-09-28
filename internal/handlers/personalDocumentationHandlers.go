@@ -42,7 +42,7 @@ func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	for rows.Next() {
 		var pd models.PersonalDocumentation
 		// Parses the current data into fields of "a" variable
-		if err := rows.Scan(&pd.Activity_ID, &pd.ID, &pd.Date, &pd.Time, &pd.File); err != nil {
+		if err := rows.Scan(&pd.ActivityID, &pd.ID, &pd.Date, &pd.Time, &pd.File); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan personal documentation")
 			log.Println("Row scan error:", err)
 			return
@@ -92,7 +92,7 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	var pd models.PersonalDocumentation
 
 	// Executes query
-	err = db.QueryRow(query, activityID).Scan(&pd.Activity_ID, &pd.ID, &pd.Date, &pd.Time, &pd.File)
+	err = db.QueryRow(query, activityID).Scan(&pd.ActivityID, &pd.ID, &pd.Date, &pd.Time, &pd.File)
 
 	// Error message if no rows are found
 	if err == sql.ErrNoRows {
@@ -122,7 +122,11 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// TECH DEBT: Validate required fields
+	// Validates required fields
+	if pd.ID == 0 || pd.Date == "" || pd.Time == "" || len(pd.File) == 0 {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
 
 	// Executes SQL to insert into activity table
 	res, err := db.ExecContext(r.Context(),
@@ -209,7 +213,11 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// TECH DEBT: Validate required fields
+	// Validates required fields
+	if pd.ID == 0 || pd.Date == "" || pd.Time == "" || len(pd.File) == 0 {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
 
 	// Executes written SQL to update the activity data
 	_, err = db.ExecContext(r.Context(),

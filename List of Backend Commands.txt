@@ -46,16 +46,27 @@ Student[] getPinnedByAdminID(id: number)
 Student[] getStudentsByName(name: string)
 Activity[] getActivitiesByDate(date: Date)
 SpecificDocumentation[] getSpecificDocumentationByStudentID(id: number)
-PointOfContact[] getMeetingsByAdminIDAndDate(id: number, date: Date)
-PointOfContact[] getPastMeetingsByStudentIDAndAdminID(id(student): number, id(admin): number)
-PointOfContact[] getFutureMeetingsByStudentIDAndAdminID(id(student): number, id(admin): number)
-Disability[] getDisabilitiesByStudentID(id: number)
-Accommodation[] getAccommodationsByStudentID(id: number)
-{Activity, name: string} getIncomingActivity(id: number)
+PointOfContact[] getPointsOfContactByAdminIDAndDate(id: number, date: Date)
+PointOfContact[] getFuturePointsOfContactByAdminID(id: number) // NEED TO DO
+PointOfContact[] getPastPointsOfContactByStudentIDAndAdminID(id(student): number, id(admin): number) // NEED TO DO
+PointOfContact[] getFuturePointsOfContactByStudentID(id: number) // NEED TO DO
+PointOfContact[] getFuturePointsOfContactByStudentIDAndAdminID(id(student): number, id(admin): number)
+{Disability, hasDisability: boolean}[] getDisabilitiesByStudentID(id: number) // NEED TO MODIFY
+{Accommodation, hasAccommodation: boolean}[] getAccommodationsByStudentID(id: number) // NEED TO MODIFY
 
 NEED TO ADD
+{Activity, name: string} getIncomingActivity(id: number)
 PersonalDocumentation[] getPersonalDocumentationByAdminID(id: number)
 PointOfContact[] getPointsOfContactByStudentID(id: number)
+
+// PointOfContact formatter. The handler needs to pull the Student data along with the PointOfContact. New route?
+{activity_id: number, name: string, event_datetime: Date} getPointsOfContactSummaryByAdminIDAndDate(id: number, date: Date)
+
+// ActivitiesSummaryByDate formatter. The handler needs to pull the respective other data. Definitely new route
+{activity_id: number, summary: string, datetime: Date} getActivitiesSummaryByDate(date: Date)
+
+// ActivitiesSummaryByStudent formatter. The handler needs to pull the respective other data. Definitely new route
+{activity_id: number, summary: string, datetime: Date} getActivitiesSummaryByStudentID(id: number)
 
 **CREATE COMMANDS**
 CreateStudent(id: number)
@@ -75,13 +86,13 @@ DeleteSpecificDocumentation(activity_id: number)
 DeletePersonalDocumentation(activity_id: number)
 DeletePointOfContact(activity_id: number)
 
+DeletePersonalDocumentationByAdminID(id: number) // NEED TO DO
+DeleteSpecificDocumentationByStudentID(id: number) // NEED TO DO
+DeletePointOfContactByStudentID(id: number) // NEED TO DO
 DeletePocAdminByAdminID(id: number)
 DeletePinnedByAdminID(id: number)
-DeletePersonalDocumentationByAdminID(id: number)
 DeleteStuDisByStudentID(id: number)
 DeleteStuAccomByStudentID(id: number)
-DeleteSpecificDocumentationByStudentID(id: number)
-DeletePointOfContactByStudentID(id: number)
 
 **UPDATE COMMANDS**
 UpdateStudent(id: number)
@@ -91,12 +102,3 @@ UpdateDisability(disability_id: number)
 UpdateSpecificDocumentation(activity_id: number)
 UpdatePersonalDocumentation(activity_id: number)
 UpdatePointOfContact(activity_id: number)
-
-OTHER THINGS:
-Need to add:
-PointOfContact formatter. The handler needs to pull the Student data along with the PointOfContact. New route?
-ActivitiesSummaryByDate formatter. The handler needs to pull the respective other data. Definitely new route
-ActivitiesSummaryByStudent formatter. The handler needs to pull the respective other data. Definitely new route
-Need a getPastPointsOfContactByStudentIDAndAdminID
-Need to modify the getAccommodationsByStudentID handler to return all accommodations and a hasAccommodations addition
-Need to modify the getDisabilitiesByStudentID handler to return all disabilities and a hasDisability addition

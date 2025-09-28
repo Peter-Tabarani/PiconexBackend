@@ -64,24 +64,24 @@ type Admin struct {
 }
 
 type Activity struct {
-	Activity_ID int    `json:"activity_id"`
-	Date        string `json:"date"`
-	Time        string `json:"time"`
+	ActivityID int    `json:"activity_id"`
+	Date       string `json:"date"`
+	Time       string `json:"time"`
 }
 
 type Documentation struct {
-	Activity_ID int    `json:"activity_id"`
-	Date        string `json:"date"`
-	Time        string `json:"time"`
-	File        []byte `json:"file"`
+	ActivityID int    `json:"activity_id"`
+	Date       string `json:"date"`
+	Time       string `json:"time"`
+	File       []byte `json:"file"`
 }
 
 type PersonalDocumentation struct {
-	Activity_ID int    `json:"activity_id"`
-	ID          int    `json:"id"`
-	Date        string `json:"date"`
-	Time        string `json:"time"`
-	File        []byte `json:"file"`
+	ActivityID int    `json:"activity_id"`
+	ID         int    `json:"id"`
+	Date       string `json:"date"`
+	Time       string `json:"time"`
+	File       []byte `json:"file"`
 }
 
 type SpecificDocumentation struct {
@@ -94,25 +94,26 @@ type SpecificDocumentation struct {
 }
 
 type Disability struct {
-	Disability_ID int    `json:"disability_id"`
-	Name          string `json:"name"`
-	Description   string `json:"description"`
+	DisabilityID int    `json:"disability_id"`
+	Name         string `json:"name"`
+	Description  string `json:"description"`
 }
 
 type Accommodation struct {
-	Accommodation_ID int    `json:"accommodation_id"`
-	Name             string `json:"name"`
-	Description      string `json:"description"`
+	AccommodationID int    `json:"accommodation_id"`
+	Name            string `json:"name"`
+	Description     string `json:"description"`
 }
 
 type PointOfContact struct {
-	Activity_ID int    `json:"activity_id"`
-	Date        string `json:"date"`
-	Time        string `json:"time"`
-	Event_Date  string `json:"event_date"`
-	Event_Time  string `json:"event_time"`
-	Event_Type  string `json:"event_type"`
-	ID          *int   `json:"id"`
+	ActivityID int    `json:"activity_id"`
+	ID         int    `json:"id"`
+	Date       string `json:"date"`
+	Time       string `json:"time"`
+	EventDate  string `json:"event_date"`
+	EventTime  string `json:"event_time"`
+	Duration   int    `json:"duration"` // NEED TO ADD. POC Handlers won't work until
+	EventType  string `json:"event_type"`
 }
 
 type Pinned struct {

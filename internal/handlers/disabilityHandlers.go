@@ -33,7 +33,7 @@ func GetDisabilities(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var d models.Disability
 		// Parses the current data into fields of "d" variable
-		if err := rows.Scan(&d.Disability_ID, &d.Name, &d.Description); err != nil {
+		if err := rows.Scan(&d.DisabilityID, &d.Name, &d.Description); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse disabilities")
 			log.Println("Row scan error:", err)
 			return
@@ -78,7 +78,7 @@ func GetDisabilityByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	var d models.Disability
 
 	// Executes written SQL and retrieves only one row
-	err = db.QueryRowContext(r.Context(), query, disabilityID).Scan(&d.Disability_ID, &d.Name, &d.Description)
+	err = db.QueryRowContext(r.Context(), query, disabilityID).Scan(&d.DisabilityID, &d.Name, &d.Description)
 
 	// Error message if no rows are found
 	if err == sql.ErrNoRows {
@@ -138,7 +138,7 @@ func GetDisabilitiesByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Reque
 	for rows.Next() {
 		var d models.Disability
 		// Parses the current data into fields of "d" variable
-		if err := rows.Scan(&d.Disability_ID, &d.Name, &d.Description); err != nil {
+		if err := rows.Scan(&d.DisabilityID, &d.Name, &d.Description); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse disabilities")
 			log.Println("Row scan error:", err)
 			return
@@ -174,7 +174,7 @@ func CreateDisability(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Validates required fields
 	if d.Name == "" {
-		utils.WriteError(w, http.StatusBadRequest, "Missing required fields: name or description")
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
@@ -238,7 +238,7 @@ func UpdateDisability(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Validates required fields
 	if d.Name == "" {
-		utils.WriteError(w, http.StatusBadRequest, "Missing required fields: name or description")
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 

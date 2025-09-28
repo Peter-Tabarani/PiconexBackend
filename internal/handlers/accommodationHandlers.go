@@ -39,7 +39,7 @@ func GetAccommodations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var a models.Accommodation
 		// Parses the current data into fields of "a" variable
-		if err := rows.Scan(&a.Accommodation_ID, &a.Name, &a.Description); err != nil {
+		if err := rows.Scan(&a.AccommodationID, &a.Name, &a.Description); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse accommodations")
 			log.Println("Row scan error:", err)
 			return
@@ -89,7 +89,7 @@ func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes query
 	err = db.QueryRowContext(r.Context(), query, accommodationID).Scan(
-		&a.Accommodation_ID, &a.Name, &a.Description,
+		&a.AccommodationID, &a.Name, &a.Description,
 	)
 
 	// Error message if no rows are found
@@ -150,7 +150,7 @@ func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	for rows.Next() {
 		var a models.Accommodation
 		// Parses the current data into fields of "a" variable
-		if err := rows.Scan(&a.Accommodation_ID, &a.Name, &a.Description); err != nil {
+		if err := rows.Scan(&a.AccommodationID, &a.Name, &a.Description); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse accommodations")
 			log.Println("Row scan error:", err)
 			return
@@ -186,7 +186,7 @@ func CreateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Validates required fields
 	if a.Name == "" {
-		utils.WriteError(w, http.StatusBadRequest, "Missing required fields: name")
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
@@ -251,7 +251,7 @@ func UpdateAccommodation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Validates required fields
 	if a.Name == "" {
-		utils.WriteError(w, http.StatusBadRequest, "Missing required fields: name or description")
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
