@@ -21,7 +21,8 @@ func main() {
 
 	// --- Put any SQL query you want here ---
 	query := `
-SELECT * from users;
+ALTER TABLE point_of_contact
+ALTER COLUMN duration DROP DEFAULT;
 	`
 
 	// Decide if it's a query (returns rows) or command (update/insert)

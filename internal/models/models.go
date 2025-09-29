@@ -111,9 +111,9 @@ type PointOfContact struct {
 	Time       string `json:"time"`
 	EventDate  string `json:"event_date"`
 	EventTime  string `json:"event_time"`
-	//Duration   int    `json:"duration"` // NEED TO ADD. POC Handlers won't work until
-	EventType string `json:"event_type"`
-	ID        int    `json:"id"`
+	Duration   int    `json:"duration"`
+	EventType  string `json:"event_type"`
+	ID         int    `json:"id"`
 }
 
 type Pinned struct {
