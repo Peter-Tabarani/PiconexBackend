@@ -297,11 +297,9 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Executes SQL to delete from activity (will cascade)
+	// Executes written SQL to delete the personal documentation
 	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM activity WHERE activity_id=?",
-		activityID,
-	)
+		"DELETE FROM personal_documentation WHERE activity_id = ?", activityID)
 
 	// Error message if ExecContext fails
 	if err != nil {
@@ -323,6 +321,60 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Personal documentation not found")
+		return
+	}
+
+	// Executes written SQL to delete the documentation
+	res, err = db.ExecContext(r.Context(),
+		"DELETE FROM documentation WHERE activity_id = ?", activityID)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete documentation")
+		log.Println("DB delete error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err = res.RowsAffected()
+
+	// Error message if RowsAffected fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Documentation not found")
+		return
+	}
+
+	// Executes written SQL to delete the activity
+	res, err = db.ExecContext(r.Context(),
+		"DELETE FROM activity WHERE activity_id = ?", activityID)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete activity")
+		log.Println("DB delete activity error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err = res.RowsAffected()
+
+	// Error message if RowsAffected fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Activity not found")
 		return
 	}
 

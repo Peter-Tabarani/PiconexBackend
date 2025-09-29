@@ -107,13 +107,13 @@ type Accommodation struct {
 
 type PointOfContact struct {
 	ActivityID int    `json:"activity_id"`
-	ID         int    `json:"id"`
 	Date       string `json:"date"`
 	Time       string `json:"time"`
 	EventDate  string `json:"event_date"`
 	EventTime  string `json:"event_time"`
-	Duration   int    `json:"duration"` // NEED TO ADD. POC Handlers won't work until
-	EventType  string `json:"event_type"`
+	//Duration   int    `json:"duration"` // NEED TO ADD. POC Handlers won't work until
+	EventType string `json:"event_type"`
+	ID        int    `json:"id"`
 }
 
 type Pinned struct {

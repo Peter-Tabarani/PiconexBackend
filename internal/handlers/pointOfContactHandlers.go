@@ -291,7 +291,7 @@ func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validates required fields
-	if poc.ID == 0 || poc.EventDate == "" || poc.EventTime == "" || poc.Duration == 0 || poc.EventType == "" || poc.Date == "" || poc.Time == "" {
+	if poc.ID == 0 || poc.EventDate == "" || poc.EventTime == "" || poc.EventType == "" || poc.Date == "" || poc.Time == "" {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -369,7 +369,7 @@ func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validates required fields
-	if poc.ID == 0 || poc.EventDate == "" || poc.EventTime == "" || poc.Duration == 0 || poc.EventType == "" || poc.Date == "" || poc.Time == "" {
+	if poc.ID == 0 || poc.EventDate == "" || poc.EventTime == "" || poc.EventType == "" || poc.Date == "" || poc.Time == "" {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -377,7 +377,7 @@ func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Updates the activity table first
 	_, err = db.ExecContext(r.Context(),
 		`UPDATE activity SET date=?, time=? WHERE activity_id=?`,
-		poc.Date, poc.Date, activityID)
+		poc.Date, poc.Time, activityID)
 
 	// Error message if ExecContext fails
 	if err != nil {
@@ -437,14 +437,16 @@ func DeletePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Executes written SQL to delete the point of contact
+	// Executes SQL to delete from point of contact
 	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM activity WHERE activity_id = ?", activityID)
+		"DELETE FROM point_of_contact WHERE activity_id = ?",
+		activityID,
+	)
 
 	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete point of contact")
-		log.Println("DB delete activity error:", err)
+		log.Println("DB delete error:", err)
 		return
 	}
 
@@ -461,6 +463,33 @@ func DeletePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Point of contact not found")
+		return
+	}
+
+	// Executes written SQL to delete the point of contact
+	res, err = db.ExecContext(r.Context(),
+		"DELETE FROM activity WHERE activity_id = ?", activityID)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete activity")
+		log.Println("DB delete error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err = res.RowsAffected()
+
+	// Error message if RowsAffected fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Activity not found")
 		return
 	}
 
