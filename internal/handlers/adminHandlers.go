@@ -298,6 +298,8 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"DELETE FROM admin WHERE id = ?",
 		id,
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete admin")
 		log.Println("DB delete error:", err)
@@ -320,6 +322,8 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes SQL to delete from person
 	res, err = db.ExecContext(r.Context(), "DELETE FROM person WHERE id = ?", id)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete person")
 		log.Println("DB delete person error:", err)
