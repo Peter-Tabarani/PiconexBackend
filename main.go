@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	dsn := "piconex:pjaplmTabs7!@tcp(178.156.189.138:3306)/piconexdb"
+	dsn := "piconex:pjaplmTabs7!@tcp(178.156.189.138:3306)/piconexdb?parseTime=true"
 	db, err := utils.Connect(dsn)
 	if err != nil {
 		log.Fatal("❌ Failed to connect to database:", err)

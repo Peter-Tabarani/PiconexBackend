@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type Person struct {
 	ID            int    `json:"id"`
 	FirstName     string `json:"first_name"`
@@ -64,9 +66,8 @@ type Admin struct {
 }
 
 type Activity struct {
-	ActivityID int    `json:"activity_id"`
-	Date       string `json:"date"`
-	Time       string `json:"time"`
+	ActivityID       int       `json:"activity_id"`
+	ActivityDateTime time.Time `json:"activity_datetime"`
 }
 
 type Documentation struct {
