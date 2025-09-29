@@ -9,6 +9,7 @@ import (
 
 	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 	"github.com/Peter-Tabarani/PiconexBackend/internal/utils"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/gorilla/mux"
 
@@ -124,10 +125,14 @@ func GetAdminByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Empty variable for admin struct
-	var a models.Admin
+	// Decodes JSON body from the request into "a" variable
+	type CreateAdminRequest struct {
+		models.Admin
+		Password string `json:"password"`
+	}
 
 	// Decodes JSON body from the request into "a" variable
+	var a CreateAdminRequest
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
 	if err := decoder.Decode(&a); err != nil {
@@ -136,19 +141,24 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TECH DEBT: Validates required fields
+	// Validates required fields
+	if a.FirstName == "" || a.LastName == "" || a.Email == "" || a.PhoneNumber == "" ||
+		a.Sex == "" || a.Birthday == "" || a.Address == "" || a.City == "" ||
+		a.Country == "" || a.Title == "" || a.Password == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
 
 	// Executes SQL to insert into person table
 	res, err := db.ExecContext(r.Context(),
 		`INSERT INTO person (
-			first_name, preferred_name, middle_name, last_name, email,
-			phone_number, pronouns, sex, gender, birthday,
-			address, city, state, zip_code, country
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-
+		first_name, preferred_name, middle_name, last_name,
+		email, phone_number, pronouns, sex, gender,
+		birthday, address, city, state, zip_code, country
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		a.FirstName, a.PreferredName, a.MiddleName, a.LastName,
-		a.Email, a.PhoneNumber, a.Pronouns, a.Sex, a.Gender, a.Birthday,
-		a.Address, a.City, a.State, a.ZipCode, a.Country,
+		a.Email, a.PhoneNumber, a.Pronouns, a.Sex, a.Gender,
+		a.Birthday, a.Address, a.City, a.State, a.ZipCode, a.Country,
 	)
 
 	// Error message if ExecContext fails
@@ -170,15 +180,32 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes SQL to insert into admin table
 	_, err = db.ExecContext(r.Context(),
-		`INSERT INTO admin (id, title)
-		VALUES (?, ?)`,
-
+		"INSERT INTO admin (id, title) VALUES (?, ?)",
 		lastID, a.Title,
 	)
 
 	// Error message if ExecContext fails
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert into admin")
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert admin title")
+		log.Println("DB insert error:", err)
+		return
+	}
+
+	// Hashes password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(a.Password), bcrypt.DefaultCost)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to hash password")
+		log.Println("Password hashing error:", err)
+		return
+	}
+
+	// Adds hash and role to the users table
+	_, err = db.ExecContext(r.Context(),
+		`INSERT INTO users (id, password_hash, role) VALUES (?, ?, ?)`,
+		lastID, string(hashedPassword), "admin",
+	)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to create admin login")
 		log.Println("DB insert error:", err)
 		return
 	}
@@ -219,7 +246,13 @@ func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TECH DEBT: Validate required fields
+	// Validates required fields
+	if a.FirstName == "" || a.LastName == "" || a.Email == "" || a.PhoneNumber == "" ||
+		a.Sex == "" || a.Birthday == "" || a.Address == "" || a.City == "" ||
+		a.Country == "" || a.Title == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
 
 	// Executes written SQL to update the person data
 	_, err = db.ExecContext(r.Context(),

@@ -414,12 +414,6 @@ func DeleteStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteStuAccomByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Only allow DELETE
-	if r.Method != http.MethodDelete {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extract student ID from path
 	vars := mux.Vars(r)
 	studentIDStr, ok := vars["id"]
@@ -606,12 +600,6 @@ func DeleteStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteStuDisByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Only allow DELETE
-	if r.Method != http.MethodDelete {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extract student ID from path
 	vars := mux.Vars(r)
 	idStr, ok := vars["id"]
@@ -742,12 +730,6 @@ func CreatePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func DeletePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not DELETE
-	if r.Method != http.MethodDelete {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
 	activityIDStr, ok1 := vars["activity_id"]
@@ -805,12 +787,6 @@ func DeletePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func DeletePocAdminByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Error message for any request that is not DELETE
-	if r.Method != http.MethodDelete {
-		utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
-
 	// Extract path variable
 	vars := mux.Vars(r)
 	idStr, ok := vars["id"]

@@ -39,7 +39,7 @@ func GetActivities(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var a models.Activity
 		// Parses the current data into fields of "a" variable
-		if err := rows.Scan(&a.Activity_ID, &a.Date, &a.Time); err != nil {
+		if err := rows.Scan(&a.ActivityID, &a.Date, &a.Time); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse activities")
 			log.Println("Row scan error:", err)
 			return
@@ -89,7 +89,7 @@ func GetActivityByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL and retrieves only one row
 	err = db.QueryRowContext(r.Context(), query, activityID).Scan(
-		&a.Activity_ID, &a.Date, &a.Time,
+		&a.ActivityID, &a.Date, &a.Time,
 	)
 
 	// Error message if no rows are found
@@ -141,7 +141,7 @@ func GetActivitiesByDate(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var a models.Activity
 		// Parses the current data into fields of "a" variable
-		if err := rows.Scan(&a.Activity_ID, &a.Date, &a.Time); err != nil {
+		if err := rows.Scan(&a.ActivityID, &a.Date, &a.Time); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse activities")
 			log.Println("Row scan error:", err)
 			return

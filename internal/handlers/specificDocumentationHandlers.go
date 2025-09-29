@@ -187,7 +187,11 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// TECH DEBT: Validates required fields
+	// Validates required fields
+	if sd.ID == 0 || sd.DocType == "" || sd.Date == "" || sd.Time == "" || len(sd.File) == 0 {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
 
 	// Executes SQL to insert into activity table
 	res, err := db.ExecContext(r.Context(),
@@ -272,7 +276,11 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// TECH DEBT: Validate required fields
+	// Validates required fields
+	if sd.ID == 0 || sd.DocType == "" || sd.Date == "" || sd.Time == "" || len(sd.File) == 0 {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
 
 	// Executes written SQL to update the activity data
 	_, err = db.ExecContext(r.Context(),

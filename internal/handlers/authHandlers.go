@@ -25,6 +25,12 @@ func LoginHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validates required fields
+	if req.Email == "" || req.Password == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
+
 	// Variables for DB values
 	var userID int
 	var passwordHash, role string
@@ -78,6 +84,12 @@ func SignupHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validates required fields
+	if req.ID == 0 || req.Email == "" || req.Password == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
+
 	// Hashes password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -111,17 +123,23 @@ func SignupStudentHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}
 
-	// Decodes JSON body from the request into "req" variable
-	var req CreateStudentRequest
+	// Decodes JSON body from the request into "s" variable
+	var s CreateStudentRequest
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
-	if err := decoder.Decode(&req); err != nil {
+	if err := decoder.Decode(&s); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
 		log.Println("JSON decode error:", err)
 		return
 	}
 
-	// TECH DEBT: Validates required fields
+	// Validates required fields
+	if s.FirstName == "" || s.LastName == "" || s.Email == "" || s.PhoneNumber == "" ||
+		s.Sex == "" || s.Birthday == "" || s.Address == "" || s.City == "" ||
+		s.Country == "" || s.Year == "" || s.StartYear == 0 || s.PlannedGradYear == 0 || s.Password == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
 
 	// Executes SQL to insert into person table
 	res, err := db.ExecContext(r.Context(),
@@ -130,9 +148,9 @@ func SignupStudentHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 			phone_number, pronouns, sex, gender, birthday,
 			address, city, state, zip_code, country
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		req.FirstName, req.PreferredName, req.MiddleName, req.LastName,
-		req.Email, req.PhoneNumber, req.Pronouns, req.Sex, req.Gender, req.Birthday,
-		req.Address, req.City, req.State, req.ZipCode, req.Country,
+		s.FirstName, s.PreferredName, s.MiddleName, s.LastName,
+		s.Email, s.PhoneNumber, s.Pronouns, s.Sex, s.Gender, s.Birthday,
+		s.Address, s.City, s.State, s.ZipCode, s.Country,
 	)
 
 	// Error message if ExecContext fails
@@ -156,7 +174,7 @@ func SignupStudentHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	_, err = db.ExecContext(r.Context(),
 		`INSERT INTO student (id, year, start_year, planned_grad_year, housing, dining)
 		VALUES (?, ?, ?, ?, ?, ?)`,
-		lastID, req.Year, req.StartYear, req.PlannedGradYear, req.Housing, req.Dining,
+		lastID, s.Year, s.StartYear, s.PlannedGradYear, s.Housing, s.Dining,
 	)
 
 	// Error message if ExecContext fails
@@ -167,7 +185,7 @@ func SignupStudentHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Hashes password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(s.Password), bcrypt.DefaultCost)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to hash password")
 		log.Println("Password hashing error:", err)

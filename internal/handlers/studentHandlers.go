@@ -105,7 +105,7 @@ func GetStudentByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	var s models.Student
 
 	// Executes query
-	err = db.QueryRow(query, studentID).Scan(
+	err = db.QueryRowContext(r.Context(), query, studentID).Scan(
 		&s.ID,
 		&s.FirstName,
 		&s.PreferredName,
@@ -237,7 +237,13 @@ func CreateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TECH DEBT: Validates required fields
+	// Validates required fields
+	if s.FirstName == "" || s.LastName == "" || s.Email == "" || s.PhoneNumber == "" ||
+		s.Sex == "" || s.Birthday == "" || s.Address == "" || s.City == "" ||
+		s.Country == "" || s.Year == "" || s.StartYear == 0 || s.PlannedGradYear == 0 {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
 
 	// Executes SQL to insert into person table
 	res, err := db.ExecContext(r.Context(),
@@ -318,7 +324,13 @@ func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TECH DEBT: Validate required fields
+	// Validates required fields
+	if s.FirstName == "" || s.LastName == "" || s.Email == "" || s.PhoneNumber == "" ||
+		s.Sex == "" || s.Birthday == "" || s.Address == "" || s.City == "" ||
+		s.Country == "" || s.Year == "" || s.StartYear == 0 || s.PlannedGradYear == 0 {
+		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
+		return
+	}
 
 	// Execute direct SQL update
 	_, err = db.ExecContext(r.Context(),

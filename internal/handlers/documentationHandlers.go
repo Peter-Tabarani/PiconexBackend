@@ -38,7 +38,7 @@ func GetDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var d models.Documentation
 		// Parses the current data into fields of "d" variable
-		if err := rows.Scan(&d.Activity_ID, &d.Date, &d.Time, &d.File); err != nil {
+		if err := rows.Scan(&d.ActivityID, &d.Date, &d.Time, &d.File); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse documentations")
 			log.Println("Row scan error:", err)
 			return
@@ -88,7 +88,7 @@ func GetDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	var d models.Documentation
 
 	// Executes written SQL and retrieves only one row
-	err = db.QueryRowContext(r.Context(), query, activityID).Scan(&d.Activity_ID, &d.Date, &d.Time, &d.File)
+	err = db.QueryRowContext(r.Context(), query, activityID).Scan(&d.ActivityID, &d.Date, &d.Time, &d.File)
 
 	// Error message if no rows are found
 	if err == sql.ErrNoRows {
