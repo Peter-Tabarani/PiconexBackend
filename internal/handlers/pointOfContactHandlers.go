@@ -19,9 +19,12 @@ func GetPointsOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
 		SELECT
-			a.activity_id, a.date, a.time,
-			poc.event_date, poc.event_time, poc.duration, poc.event_type,
-			poc.id
+    		poc.activity_id,
+    		a.activity_datetime,
+    		poc.event_datetime,
+    		poc.duration,
+    		poc.event_type,
+    		poc.id
 		FROM point_of_contact poc
 		JOIN activity a ON poc.activity_id = a.activity_id
 	`
@@ -45,8 +48,11 @@ func GetPointsOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		var poc models.PointOfContact
 		// Parses the current data into fields of "poc" variable
 		if err := rows.Scan(
-			&poc.ActivityID, &poc.Date, &poc.Time,
-			&poc.EventDate, &poc.EventTime, &poc.Duration, &poc.EventType,
+			&poc.ActivityID,
+			&poc.ActivityDateTime,
+			&poc.EventDateTime,
+			&poc.Duration,
+			&poc.EventType,
 			&poc.ID,
 		); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse points of contact")
@@ -89,9 +95,12 @@ func GetPointOfContactByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
 		SELECT
-			a.activity_id, a.date, a.time,
-			poc.event_date, poc.event_time, poc.duration, poc.event_type,
-			poc.id
+    		poc.activity_id,
+    		a.activity_datetime,
+    		poc.event_datetime,
+    		poc.duration,
+    		poc.event_type,
+    		poc.id
 		FROM point_of_contact poc
 		JOIN activity a ON poc.activity_id = a.activity_id
 		WHERE poc.activity_id = ?
@@ -102,8 +111,11 @@ func GetPointOfContactByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL and retrieves only one row
 	err = db.QueryRowContext(r.Context(), query, activityID).Scan(
-		&poc.ActivityID, &poc.Date, &poc.Time,
-		&poc.EventDate, &poc.EventTime, &poc.Duration, &poc.EventType,
+		&poc.ActivityID,
+		&poc.ActivityDateTime,
+		&poc.EventDateTime,
+		&poc.Duration,
+		&poc.EventType,
 		&poc.ID,
 	)
 
@@ -143,13 +155,17 @@ func GetPointsOfContactByAdminIDAndDate(db *sql.DB, w http.ResponseWriter, r *ht
 	// Query: join point_of_contact -> activity and poc_adm
 	query := `
 		SELECT
-			a.activity_id, a.date, a.time,
-			poc.event_date, poc.event_time, poc.duration, poc.event_type,
-			poc.id
+    		poc.activity_id,
+    		a.activity_datetime,
+    		poc.event_datetime,
+    		poc.duration,
+    		poc.event_type,
+    		poc.id
 		FROM point_of_contact poc
 		JOIN activity a ON poc.activity_id = a.activity_id
 		JOIN poc_adm pa ON poc.activity_id = pa.activity_id
-		WHERE pa.id = ? AND poc.event_date = ?
+		WHERE pa.id = ? AND DATE(poc.event_datetime) = ?
+
 	`
 
 	// Executes written SQL
@@ -170,11 +186,16 @@ func GetPointsOfContactByAdminIDAndDate(db *sql.DB, w http.ResponseWriter, r *ht
 	for rows.Next() {
 		var poc models.PointOfContact
 		// Parses the current data into fields of "a" variable
-		if err := rows.Scan(
-			&poc.ActivityID, &poc.Date, &poc.Time,
-			&poc.EventDate, &poc.EventTime, &poc.Duration, &poc.EventType,
+		var err error
+		err = rows.Scan(
+			&poc.ActivityID,
+			&poc.ActivityDateTime,
+			&poc.EventDateTime,
+			&poc.Duration,
+			&poc.EventType,
 			&poc.ID,
-		); err != nil {
+		)
+		if err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse points of contact")
 			log.Println("Row scan error:", err)
 			return
@@ -225,13 +246,16 @@ func GetFuturePointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWr
 	// Query: join point_of_contact -> activity -> poc_adm
 	query := `
 		SELECT
-			a.activity_id, a.date, a.time,
-			poc.event_date, poc.event_time, poc.duration, poc.event_type,
-			poc.id
+    		poc.activity_id,
+    		a.activity_datetime,
+    		poc.event_datetime,
+    		poc.duration,
+    		poc.event_type,
+    		poc.id
 		FROM point_of_contact poc
 		JOIN activity a ON poc.activity_id = a.activity_id
 		JOIN poc_adm pa ON poc.activity_id = pa.activity_id
-		WHERE poc.id = ? AND pa.id = ? AND poc.event_date > ?
+		WHERE poc.id = ? AND pa.id = ? AND poc.event_datetime > ?
 	`
 
 	// Executes written SQL
@@ -252,11 +276,15 @@ func GetFuturePointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWr
 	for rows.Next() {
 		var poc models.PointOfContact
 		// Parses the current data into fields of "a" variable
-		if err := rows.Scan(
-			&poc.ActivityID, &poc.Date, &poc.Time,
-			&poc.EventDate, &poc.EventTime, &poc.Duration, &poc.EventType,
+		err := rows.Scan(
+			&poc.ActivityID,
+			&poc.ActivityDateTime,
+			&poc.EventDateTime,
+			&poc.Duration,
+			&poc.EventType,
 			&poc.ID,
-		); err != nil {
+		)
+		if err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse future points of contact")
 			log.Println("Row scan error:", err)
 			return
@@ -291,15 +319,15 @@ func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validates required fields
-	if poc.ID == 0 || poc.EventDate == "" || poc.EventTime == "" || poc.Duration == 0 || poc.EventType == "" || poc.Date == "" || poc.Time == "" {
+	if poc.ID == 0 || poc.Duration == 0 || poc.EventType == "" || poc.ActivityDateTime.IsZero() || poc.EventDateTime.IsZero() {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
 	// Executes written SQL to insert a new activity
 	res, err := db.ExecContext(r.Context(),
-		`INSERT INTO activity (date, time) VALUES (?, ?)`,
-		poc.Date, poc.Time,
+		`INSERT INTO activity (activity_datetime) VALUES (?)`,
+		poc.ActivityDateTime,
 	)
 
 	// Error message if ExecContext fails
@@ -321,8 +349,8 @@ func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL to insert a new point of contact
 	_, err = db.ExecContext(r.Context(),
-		`INSERT INTO point_of_contact (activity_id, event_date, event_time, duration, event_type, id) VALUES (?, ?, ?, ?, ?, ?)`,
-		lastID, poc.EventDate, poc.EventTime, poc.Duration, poc.EventType, poc.ID,
+		`INSERT INTO point_of_contact (activity_id, event_datetime, duration, event_type, id) VALUES (?, ?, ?, ?, ?)`,
+		lastID, poc.EventDateTime, poc.Duration, poc.EventType, poc.ID,
 	)
 
 	// Error message if ExecContext fails
@@ -369,15 +397,15 @@ func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validates required fields
-	if poc.ID == 0 || poc.EventDate == "" || poc.EventTime == "" || poc.Duration == 0 || poc.EventType == "" || poc.Date == "" || poc.Time == "" {
+	if poc.ID == 0 || poc.Duration == 0 || poc.EventType == "" || poc.ActivityDateTime.IsZero() || poc.EventDateTime.IsZero() {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
 	// Updates the activity table first
 	_, err = db.ExecContext(r.Context(),
-		`UPDATE activity SET date=?, time=? WHERE activity_id=?`,
-		poc.Date, poc.Time, activityID)
+		`UPDATE activity SET activity_datetime=? WHERE activity_id=?`,
+		poc.ActivityDateTime, activityID)
 
 	// Error message if ExecContext fails
 	if err != nil {
@@ -388,8 +416,8 @@ func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Updates the point_of_contact table
 	res, err := db.ExecContext(r.Context(),
-		`UPDATE point_of_contact SET event_date=?, event_time=?, duration=?, event_type=?, id=? WHERE activity_id=?`,
-		poc.EventDate, poc.EventTime, poc.Duration, poc.EventType, poc.ID, activityID)
+		`UPDATE point_of_contact SET event_datetime=?, duration=?, event_type=?, id=? WHERE activity_id=?`,
+		poc.EventDateTime, poc.Duration, poc.EventType, poc.ID, activityID)
 
 	// Error message if ExecContext fails
 	if err != nil {

@@ -18,7 +18,7 @@ func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	// All data being selected for this GET command
 	query := `
 		SELECT
-			pd.activity_id, pd.id, a.date, a.time, d.file
+			pd.activity_id, pd.id, a.activity_datetime, d.file
 		FROM personal_documentation pd
 		JOIN activity a ON pd.activity_id = a.activity_id
 		JOIN documentation d ON pd.activity_id = d.activity_id
@@ -42,7 +42,7 @@ func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	for rows.Next() {
 		var pd models.PersonalDocumentation
 		// Parses the current data into fields of "a" variable
-		if err := rows.Scan(&pd.ActivityID, &pd.ID, &pd.Date, &pd.Time, &pd.File); err != nil {
+		if err := rows.Scan(&pd.ActivityID, &pd.ID, &pd.ActivityDateTime, &pd.File); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan personal documentation")
 			log.Println("Row scan error:", err)
 			return
@@ -81,7 +81,7 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 
 	// SQL query to select a single personal_documentation
 	query := `
-		SELECT pd.activity_id, pd.id, a.date, a.time, d.file
+		SELECT pd.activity_id, pd.id, a.activity_datetime, d.file
 		FROM personal_documentation pd
 		JOIN activity a ON pd.activity_id = a.activity_id
 		JOIN documentation d ON pd.activity_id = d.activity_id
@@ -92,7 +92,7 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	var pd models.PersonalDocumentation
 
 	// Executes query
-	err = db.QueryRow(query, activityID).Scan(&pd.ActivityID, &pd.ID, &pd.Date, &pd.Time, &pd.File)
+	err = db.QueryRow(query, activityID).Scan(&pd.ActivityID, &pd.ID, &pd.ActivityDateTime, &pd.File)
 
 	// Error message if no rows are found
 	if err == sql.ErrNoRows {
@@ -123,15 +123,15 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Validates required fields
-	if pd.ID == 0 || pd.Date == "" || pd.Time == "" || len(pd.File) == 0 {
+	if pd.ID == 0 || pd.ActivityDateTime.IsZero() || len(pd.File) == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
 	// Executes SQL to insert into activity table
 	res, err := db.ExecContext(r.Context(),
-		"INSERT INTO activity (date, time) VALUES (?, ?)",
-		pd.Date, pd.Time,
+		"INSERT INTO activity (activity_datetime) VALUES (?)",
+		pd.ActivityDateTime,
 	)
 
 	// Error message if ExecContext fails
@@ -214,15 +214,15 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Validates required fields
-	if pd.ID == 0 || pd.Date == "" || pd.Time == "" || len(pd.File) == 0 {
+	if pd.ID == 0 || pd.ActivityDateTime.IsZero() || len(pd.File) == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
 	// Executes written SQL to update the activity data
 	_, err = db.ExecContext(r.Context(),
-		"UPDATE activity SET date=?, time=? WHERE activity_id=?",
-		pd.Date, pd.Time, activityID,
+		"UPDATE activity SET activity_datetime=? WHERE activity_id=?",
+		pd.ActivityDateTime, activityID,
 	)
 
 	// Error message if ExecContext fails

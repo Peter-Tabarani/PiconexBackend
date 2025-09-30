@@ -71,27 +71,24 @@ type Activity struct {
 }
 
 type Documentation struct {
-	ActivityID int    `json:"activity_id"`
-	Date       string `json:"date"`
-	Time       string `json:"time"`
-	File       []byte `json:"file"`
+	ActivityID       int       `json:"activity_id"`
+	ActivityDateTime time.Time `json:"activity_datetime"`
+	File             []byte    `json:"file"`
 }
 
 type PersonalDocumentation struct {
-	ActivityID int    `json:"activity_id"`
-	ID         int    `json:"id"`
-	Date       string `json:"date"`
-	Time       string `json:"time"`
-	File       []byte `json:"file"`
+	ActivityID       int       `json:"activity_id"`
+	ID               int       `json:"id"`
+	ActivityDateTime time.Time `json:"activity_datetime"`
+	File             []byte    `json:"file"`
 }
 
 type SpecificDocumentation struct {
-	Activity_ID int    `json:"activity_id"`
-	ID          int    `json:"id"`
-	DocType     string `json:"doc_type"`
-	Date        string `json:"date"`
-	Time        string `json:"time"`
-	File        []byte `json:"file"`
+	ActivityID       int       `json:"activity_id"`
+	ID               int       `json:"id"`
+	DocType          string    `json:"doc_type"`
+	ActivityDateTime time.Time `json:"activity_datetime"`
+	File             []byte    `json:"file"`
 }
 
 type Disability struct {
@@ -107,14 +104,12 @@ type Accommodation struct {
 }
 
 type PointOfContact struct {
-	ActivityID int    `json:"activity_id"`
-	Date       string `json:"date"`
-	Time       string `json:"time"`
-	EventDate  string `json:"event_date"`
-	EventTime  string `json:"event_time"`
-	Duration   int    `json:"duration"`
-	EventType  string `json:"event_type"`
-	ID         int    `json:"id"`
+	ActivityID       int       `json:"activity_id"`
+	ActivityDateTime time.Time `json:"activity_datetime"`
+	EventDateTime    time.Time `json:"event_datetime"`
+	Duration         int       `json:"duration"`
+	EventType        string    `json:"event_type"`
+	ID               int       `json:"id"`
 }
 
 type Pinned struct {
