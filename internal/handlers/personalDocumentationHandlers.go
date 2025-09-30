@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 	"github.com/Peter-Tabarani/PiconexBackend/internal/utils"
@@ -122,8 +123,11 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Automatically set activity_datetime to now
+	pd.ActivityDateTime = time.Now()
+
 	// Validates required fields
-	if pd.ID == 0 || pd.ActivityDateTime.IsZero() || len(pd.File) == 0 {
+	if pd.ID == 0 || len(pd.File) == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -213,8 +217,11 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Automatically set activity_datetime to now
+	pd.ActivityDateTime = time.Now()
+
 	// Validates required fields
-	if pd.ID == 0 || pd.ActivityDateTime.IsZero() || len(pd.File) == 0 {
+	if pd.ID == 0 || len(pd.File) == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}

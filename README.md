@@ -30,18 +30,17 @@ CURRENT ADMIN TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2
 
 CURRENT STUDENT TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMjIsInJvbGUiOiJzdHVkZW50IiwiZXhwIjoxNzU4NTg4Nzg4LCJpYXQiOjE3NTg1ODUxODh9.GrkAgTQaXtOx8hwwF6XsiqE1Vdp0PqQ_rL9qut-QxqI
 
-curl -X POST http://localhost:8080/specific-documentation \
+curl -X POST http://localhost:8080/point-of-contact \
  -H "Content-Type: application/json" \
- -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMjIsInJvbGUiOiJzdHVkZW50IiwiZXhwIjoxNzU4NTg4Nzg4LCJpYXQiOjE3NTg1ODUxODh9.GrkAgTQaXtOx8hwwF6XsiqE1Vdp0PqQ_rL9qut-QxqI" \
+ -H "Authorization: Bearer superkey" \
  -d '{
-"id": 122,
-"doc_type": "Medical",
-"date": "2025-09-22",
-"time": "09:00",
-"file": "base64encodedfile"
+"event_datetime": "2025-09-22T13:30:00Z",
+"duration": 30,
+"event_type": "trad",
+"id": 15
 }'
 
-curl -X GET http://localhost:8080/activity/228 \
+curl -X GET http://localhost:8080/point-of-contact/24 \
  -H "Authorization: Bearer superkey"
 
 curl -X GET http://localhost:8080/personal-documentation \
@@ -54,10 +53,8 @@ curl -X PUT http://localhost:8080/point-of-contact/24 \
  -H "Content-Type: application/json" \
  -H "Authorization: Bearer superkey" \
  -d '{
-"date": "2025-01-27",
-"time": "11:15:00",
-"event_date": "2025-05-20",
-"event_time": "11:00:00",
+"event_datetime": "2025-09-22T13:30:00Z",
+"duration": 60,
 "event_type": "trad",
 "id": 15
 }'

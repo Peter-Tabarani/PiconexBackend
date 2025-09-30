@@ -185,17 +185,15 @@ func GetPointsOfContactByAdminIDAndDate(db *sql.DB, w http.ResponseWriter, r *ht
 	// Reads each row returned by the database
 	for rows.Next() {
 		var poc models.PointOfContact
-		// Parses the current data into fields of "a" variable
-		var err error
-		err = rows.Scan(
+		// Parses the current data into fields of "poc" variable
+		if err := rows.Scan(
 			&poc.ActivityID,
 			&poc.ActivityDateTime,
 			&poc.EventDateTime,
 			&poc.Duration,
 			&poc.EventType,
 			&poc.ID,
-		)
-		if err != nil {
+		); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse points of contact")
 			log.Println("Row scan error:", err)
 			return
@@ -275,17 +273,16 @@ func GetFuturePointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWr
 	// Reads each row returned by the database
 	for rows.Next() {
 		var poc models.PointOfContact
-		// Parses the current data into fields of "a" variable
-		err := rows.Scan(
+		// Parses the current data into fields of "poc" variable
+		if err := rows.Scan(
 			&poc.ActivityID,
 			&poc.ActivityDateTime,
 			&poc.EventDateTime,
 			&poc.Duration,
 			&poc.EventType,
 			&poc.ID,
-		)
-		if err != nil {
-			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse future points of contact")
+		); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse points of contact")
 			log.Println("Row scan error:", err)
 			return
 		}
@@ -319,10 +316,13 @@ func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validates required fields
-	if poc.ID == 0 || poc.Duration == 0 || poc.EventType == "" || poc.ActivityDateTime.IsZero() || poc.EventDateTime.IsZero() {
+	if poc.ID == 0 || poc.Duration == 0 || poc.EventType == "" || poc.EventDateTime.IsZero() {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
+
+	// Automatically set activity_datetime to now
+	poc.ActivityDateTime = time.Now()
 
 	// Executes written SQL to insert a new activity
 	res, err := db.ExecContext(r.Context(),
@@ -396,8 +396,11 @@ func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Automatically set activity_datetime to now
+	poc.ActivityDateTime = time.Now()
+
 	// Validates required fields
-	if poc.ID == 0 || poc.Duration == 0 || poc.EventType == "" || poc.ActivityDateTime.IsZero() || poc.EventDateTime.IsZero() {
+	if poc.ID == 0 || poc.Duration == 0 || poc.EventType == "" || poc.EventDateTime.IsZero() {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
