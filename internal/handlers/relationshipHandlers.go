@@ -651,7 +651,7 @@ func GetPocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
 		SELECT activity_id, id
-		FROM poc_adm
+		FROM poc_admin
 	`
 
 	// Executes written SQL
@@ -712,7 +712,7 @@ func CreatePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL to insert POC admin record
 	_, err := db.ExecContext(r.Context(),
-		"INSERT INTO poc_adm (activity_id, id) VALUES (?, ?)",
+		"INSERT INTO poc_admin (activity_id, id) VALUES (?, ?)",
 		req.ActivityID, req.ID,
 	)
 
@@ -755,7 +755,7 @@ func DeletePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL to delete POC admin record
 	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM poc_adm WHERE activity_id = ? AND id = ?",
+		"DELETE FROM poc_admin WHERE activity_id = ? AND id = ?",
 		activityID, id,
 	)
 
@@ -803,15 +803,15 @@ func DeletePocAdminByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Executes written SQL to delete poc_adm records for given admin
+	// Executes written SQL to delete poc_admin records for given admin
 	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM poc_adm WHERE id = ?",
+		"DELETE FROM poc_admin WHERE id = ?",
 		id,
 	)
 
 	// Error message if ExecContext fails
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete poc_adm records")
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete poc_admin records")
 		log.Println("DB delete error:", err)
 		return
 	}
@@ -826,7 +826,7 @@ func DeletePocAdminByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request)
 
 	// Error message if no rows were deleted
 	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "No poc_adm records found for this admin ID")
+		utils.WriteError(w, http.StatusNotFound, "No poc_admin records found for this admin ID")
 		return
 	}
 

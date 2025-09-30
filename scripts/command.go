@@ -21,8 +21,7 @@ func main() {
 
 	// --- Put any SQL query you want here ---
 	query := `
-ALTER TABLE point_of_contact
-ALTER COLUMN duration DROP DEFAULT;
+RENAME TABLE poc_adm TO poc_admin;
 	`
 
 	// Decide if it's a query (returns rows) or command (update/insert)
