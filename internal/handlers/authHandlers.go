@@ -39,7 +39,7 @@ func LoginHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	err := db.QueryRow(`
 		SELECT u.id, u.password_hash, u.role
 		FROM users u
-		JOIN person p ON p.id = u.id
+		JOIN person p ON p.person_id = u.id
 		WHERE p.email = ?`, req.Email,
 	).Scan(&userID, &passwordHash, &role)
 
