@@ -40,7 +40,7 @@ curl -X POST http://localhost:8080/point-of-contact \
 "id": 15
 }'
 
-curl -X GET http://localhost:8080/point-of-contact/24 \
+curl -X GET http://localhost:8080/poc-admin \
  -H "Authorization: Bearer superkey"
 
 curl -X GET http://localhost:8080/personal-documentation \

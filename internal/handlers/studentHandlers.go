@@ -19,12 +19,12 @@ func GetStudents(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
 		SELECT
-			p.id, p.first_name, p.preferred_name, p.middle_name, p.last_name,
+			p.person_id, p.first_name, p.preferred_name, p.middle_name, p.last_name,
 			p.email, p.phone_number, p.pronouns, p.sex, p.gender,
 			p.birthday, p.address, p.city, p.state, p.zip_code, p.country, s.year,
 			s.start_year, s.planned_grad_year, s.housing, s.dining
 		FROM student s
-		JOIN person p ON s.id = p.id
+		JOIN person p ON s.student_id = p.person_id
 	`
 
 	// Executes written SQL
@@ -46,7 +46,7 @@ func GetStudents(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		var s models.Student
 		// Parses the current data into fields of "s" variable
 		if err := rows.Scan(
-			&s.ID, &s.FirstName, &s.PreferredName, &s.MiddleName, &s.LastName,
+			&s.StudentID, &s.FirstName, &s.PreferredName, &s.MiddleName, &s.LastName,
 			&s.Email, &s.PhoneNumber, &s.Pronouns, &s.Sex, &s.Gender,
 			&s.Birthday, &s.Address, &s.City, &s.State, &s.ZipCode, &s.Country,
 			&s.Year, &s.StartYear, &s.PlannedGradYear, &s.Housing, &s.Dining,
@@ -74,13 +74,13 @@ func GetStudents(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func GetStudentByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["id"]
+	idStr, ok := vars["student_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
 		return
 	}
 
-	// Converts the "id" string to an integer
+	// Converts the "student_id" string to an integer
 	studentID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
@@ -91,14 +91,14 @@ func GetStudentByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// SQL query to select a single student
 	query := `
 		SELECT
-			s.id,
+			s.student_id,
 			p.first_name, p.preferred_name, p.middle_name, p.last_name,
 			p.email, p.phone_number, p.pronouns, p.sex, p.gender,
 			p.birthday, p.address, p.city, p.state, p.zip_code, p.country,
 			s.year, s.start_year, s.planned_grad_year, s.housing, s.dining
 		FROM student s
-		JOIN person p ON s.id = p.id
-		WHERE s.id = ?
+		JOIN person p ON s.student_id = p.person_id
+		WHERE s.student_id = ?
 	`
 
 	// Empty variable for student struct
@@ -106,7 +106,7 @@ func GetStudentByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes query
 	err = db.QueryRowContext(r.Context(), query, studentID).Scan(
-		&s.ID,
+		&s.StudentID,
 		&s.FirstName,
 		&s.PreferredName,
 		&s.MiddleName,
@@ -179,12 +179,12 @@ func GetStudentsByName(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// SQL query to select students matching the name
 	query := `
 		SELECT
-			s.id, p.first_name, p.preferred_name, p.middle_name, p.last_name,
+			s.student_id, p.first_name, p.preferred_name, p.middle_name, p.last_name,
 			p.email, p.phone_number, p.pronouns, p.sex, p.gender, p.birthday,
 			p.address, p.city, p.state, p.zip_code, p.country,
 			s.year, s.start_year, s.planned_grad_year, s.housing, s.dining
 		FROM student s
-		JOIN person p ON s.id = p.id
+		JOIN person p ON s.student_id = p.person_id
 		WHERE ` + whereClause
 
 	// Executes written SQL
@@ -206,7 +206,7 @@ func GetStudentsByName(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		var s models.Student
 		// Parses the current data into fields of "s" variable
 		if err := rows.Scan(
-			&s.ID, &s.FirstName, &s.PreferredName, &s.MiddleName, &s.LastName,
+			&s.StudentID, &s.FirstName, &s.PreferredName, &s.MiddleName, &s.LastName,
 			&s.Email, &s.PhoneNumber, &s.Pronouns, &s.Sex, &s.Gender,
 			&s.Birthday, &s.Address, &s.City, &s.State, &s.ZipCode, &s.Country,
 			&s.Year, &s.StartYear, &s.PlannedGradYear, &s.Housing, &s.Dining,
@@ -276,7 +276,7 @@ func CreateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes SQL to insert into student table
 	_, err = db.ExecContext(r.Context(),
-		`INSERT INTO student (id, year, start_year, planned_grad_year, housing, dining)
+		`INSERT INTO student (student_id, year, start_year, planned_grad_year, housing, dining)
 		VALUES (?, ?, ?, ?, ?, ?)`,
 		lastID, s.Year, s.StartYear, s.PlannedGradYear, s.Housing, s.Dining,
 	)
@@ -298,13 +298,13 @@ func CreateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["id"]
+	idStr, ok := vars["student_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
 		return
 	}
 
-	// Converts the "accommodation_id" string to an integer
+	// Converts the "student_id" string to an integer
 	studentID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
@@ -338,7 +338,7 @@ func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		 SET first_name = ?, preferred_name = ?, middle_name = ?, last_name = ?,
 		     email = ?, phone_number = ?, pronouns = ?, sex = ?, gender = ?,
 		     birthday = ?, address = ?, city = ?, state = ?, zip_code = ?, country = ?
-		 WHERE id = ?`,
+		 WHERE person_id = ?`,
 		s.FirstName, s.PreferredName, s.MiddleName, s.LastName,
 		s.Email, s.PhoneNumber, s.Pronouns, s.Sex, s.Gender,
 		s.Birthday, s.Address, s.City, s.State, s.ZipCode, s.Country,
@@ -356,7 +356,7 @@ func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	res, err := db.ExecContext(r.Context(),
 		`UPDATE student
 		 SET year = ?, start_year = ?, planned_grad_year = ?, housing = ?, dining = ?
-		 WHERE id = ?`,
+		 WHERE student_id = ?`,
 		s.Year, s.StartYear, s.PlannedGradYear, s.Housing, s.Dining,
 		studentID,
 	)
@@ -393,13 +393,13 @@ func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["id"]
+	idStr, ok := vars["student_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
 		return
 	}
 
-	// Converts the "id" string to an integer
+	// Converts the "student_id" string to an integer
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
@@ -409,7 +409,7 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes SQL to delete from student
 	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM student WHERE id = ?",
+		"DELETE FROM student WHERE student_id = ?",
 		id,
 	)
 
@@ -437,7 +437,7 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Executes SQL to delete from person
-	res, err = db.ExecContext(r.Context(), "DELETE FROM person WHERE id = ?", id)
+	res, err = db.ExecContext(r.Context(), "DELETE FROM person WHERE person_id = ?", id)
 
 	// Error message if ExecContext fails
 	if err != nil {

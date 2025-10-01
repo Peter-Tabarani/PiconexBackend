@@ -3,7 +3,7 @@ package models
 import "time"
 
 type Person struct {
-	ID            int    `json:"id"`
+	PersonID      int    `json:"person_id"`
 	FirstName     string `json:"first_name"`
 	PreferredName string `json:"preferred_name"`
 	MiddleName    string `json:"middle_name"`
@@ -22,7 +22,7 @@ type Person struct {
 }
 
 type Student struct {
-	ID              int    `json:"id"`
+	StudentID       int    `json:"student_id"`
 	FirstName       string `json:"first_name"`
 	PreferredName   string `json:"preferred_name"`
 	MiddleName      string `json:"middle_name"`
@@ -46,7 +46,7 @@ type Student struct {
 }
 
 type Admin struct {
-	ID            int    `json:"id"`
+	AdminID       int    `json:"admin_id"`
 	FirstName     string `json:"first_name"`
 	PreferredName string `json:"preferred_name"`
 	MiddleName    string `json:"middle_name"`
@@ -71,24 +71,24 @@ type Activity struct {
 }
 
 type Documentation struct {
-	ActivityID       int       `json:"activity_id"`
+	DocumentationID  int       `json:"documentation_id"`
 	ActivityDateTime time.Time `json:"activity_datetime"`
 	File             []byte    `json:"file"`
 }
 
 type PersonalDocumentation struct {
-	ActivityID       int       `json:"activity_id"`
-	ID               int       `json:"id"`
-	ActivityDateTime time.Time `json:"activity_datetime"`
-	File             []byte    `json:"file"`
+	PersonalDocumentationID int       `json:"personal_documentation_id"`
+	AdminID                 int       `json:"admin_id"`
+	ActivityDateTime        time.Time `json:"activity_datetime"`
+	File                    []byte    `json:"file"`
 }
 
 type SpecificDocumentation struct {
-	ActivityID       int       `json:"activity_id"`
-	ID               int       `json:"id"`
-	DocType          string    `json:"doc_type"`
-	ActivityDateTime time.Time `json:"activity_datetime"`
-	File             []byte    `json:"file"`
+	SpecificDocumentationID int       `json:"specific_documentation_id"`
+	StudentID               int       `json:"student_id"`
+	DocType                 string    `json:"doc_type"`
+	ActivityDateTime        time.Time `json:"activity_datetime"`
+	File                    []byte    `json:"file"`
 }
 
 type Disability struct {
@@ -104,12 +104,12 @@ type Accommodation struct {
 }
 
 type PointOfContact struct {
-	ActivityID       int       `json:"activity_id"`
+	PointOfContactID int       `json:"point_of_contact_id"`
 	ActivityDateTime time.Time `json:"activity_datetime"`
 	EventDateTime    time.Time `json:"event_datetime"`
 	Duration         int       `json:"duration"`
 	EventType        string    `json:"event_type"`
-	ID               int       `json:"id"`
+	StudentID        int       `json:"student_id"`
 }
 
 type Pinned struct {
@@ -118,16 +118,16 @@ type Pinned struct {
 }
 
 type StudentDisability struct {
-	ID           int `json:"id"`
+	StudentID    int `json:"student_id"`
 	DisabilityID int `json:"disability_id"`
 }
 
 type StudentAccommodation struct {
-	ID              int `json:"id"`
+	StudentID       int `json:"student_id"`
 	AccommodationID int `json:"accommodation_id"`
 }
 
 type PocAdmin struct {
-	ActivityID int `json:"activity_id"`
-	ID         int `json:"id"`
+	PointOfContactID int `json:"point_of_contact_id"`
+	AdminID          int `json:"admin_id"`
 }

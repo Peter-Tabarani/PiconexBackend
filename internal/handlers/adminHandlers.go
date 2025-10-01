@@ -20,11 +20,11 @@ func GetAdmins(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
 		SELECT
-			p.id, p.first_name, p.preferred_name, p.middle_name, p.last_name,
+			p.person_id, p.first_name, p.preferred_name, p.middle_name, p.last_name,
 			p.email, p.phone_number, p.pronouns, p.sex, p.gender,
 			p.birthday, p.address, p.city, p.state, p.zip_code, p.country, a.title
 		FROM admin a
-		JOIN person p ON a.id = p.id
+		JOIN person p ON a.admin_id = p.person_id
 	`
 
 	// Executes written SQL
@@ -46,7 +46,7 @@ func GetAdmins(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		var a models.Admin
 		// Parses the current data into fields of "a" variable
 		if err := rows.Scan(
-			&a.ID, &a.FirstName, &a.PreferredName, &a.MiddleName, &a.LastName,
+			&a.AdminID, &a.FirstName, &a.PreferredName, &a.MiddleName, &a.LastName,
 			&a.Email, &a.PhoneNumber, &a.Pronouns, &a.Sex, &a.Gender,
 			&a.Birthday, &a.Address, &a.City, &a.State, &a.ZipCode, &a.Country,
 			&a.Title,
@@ -73,13 +73,13 @@ func GetAdmins(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func GetAdminByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["id"]
+	idStr, ok := vars["admin_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID")
 		return
 	}
 
-	// Converts the "id" string to an integer
+	// Converts the "admin_id" string to an integer
 	adminID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
@@ -90,12 +90,12 @@ func GetAdminByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
 		SELECT
-			p.id, p.first_name, p.preferred_name, p.middle_name, p.last_name,
+			a.admin_id, p.first_name, p.preferred_name, p.middle_name, p.last_name,
 			p.email, p.phone_number, p.pronouns, p.sex, p.gender,
 			p.birthday, p.address, p.city, p.state, p.zip_code, p.country, a.title
 		FROM admin a
-		JOIN person p ON a.id = p.id
-		WHERE a.id = ?
+		JOIN person p ON a.admin_id = p.person_id
+		WHERE a.admin_id = ?
 	`
 
 	// Empty variable for admin struct
@@ -103,7 +103,7 @@ func GetAdminByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL and retrieves only one row
 	err = db.QueryRowContext(r.Context(), query, adminID).Scan(
-		&a.ID, &a.FirstName, &a.PreferredName, &a.MiddleName, &a.LastName,
+		&a.AdminID, &a.FirstName, &a.PreferredName, &a.MiddleName, &a.LastName,
 		&a.Email, &a.PhoneNumber, &a.Pronouns, &a.Sex, &a.Gender,
 		&a.Birthday, &a.Address, &a.City, &a.State, &a.ZipCode, &a.Country,
 		&a.Title,
@@ -180,7 +180,7 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes SQL to insert into admin table
 	_, err = db.ExecContext(r.Context(),
-		"INSERT INTO admin (id, title) VALUES (?, ?)",
+		"INSERT INTO admin (admin_id, title) VALUES (?, ?)",
 		lastID, a.Title,
 	)
 
@@ -220,7 +220,7 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["id"]
+	idStr, ok := vars["admin_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID")
 		return
@@ -260,7 +260,7 @@ func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 			first_name=?, preferred_name=?, middle_name=?, last_name=?,
 			email=?, phone_number=?, pronouns=?, sex=?, gender=?,
 			birthday=?, address=?, city=?, state=?, zip_code=?, country=?
-		WHERE id=?`,
+		WHERE person_id=?`,
 		a.FirstName, a.PreferredName, a.MiddleName, a.LastName,
 		a.Email, a.PhoneNumber, a.Pronouns, a.Sex, a.Gender,
 		a.Birthday, a.Address, a.City, a.State, a.ZipCode, a.Country,
@@ -276,7 +276,7 @@ func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL to update the admin title
 	res, err := db.ExecContext(r.Context(),
-		"UPDATE admin SET title=? WHERE id=?",
+		"UPDATE admin SET title=? WHERE admin_id=?",
 		a.Title, adminID,
 	)
 
@@ -312,14 +312,14 @@ func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["id"]
+	idStr, ok := vars["admin_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID")
 		return
 	}
 
-	// Converts the "id" string to an integer
-	id, err := strconv.Atoi(idStr)
+	// Converts the "admin_id" string to an integer
+	adminID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
 		log.Println("Invalid ID parse error:", err)
@@ -328,8 +328,8 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes SQL to delete from admin
 	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM admin WHERE id = ?",
-		id,
+		"DELETE FROM admin WHERE admin_id = ?",
+		adminID,
 	)
 
 	// Error message if ExecContext fails
@@ -356,7 +356,7 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Executes SQL to delete from person
-	res, err = db.ExecContext(r.Context(), "DELETE FROM person WHERE id = ?", id)
+	res, err = db.ExecContext(r.Context(), "DELETE FROM person WHERE person_id = ?", adminID)
 
 	// Error message if ExecContext fails
 	if err != nil {
