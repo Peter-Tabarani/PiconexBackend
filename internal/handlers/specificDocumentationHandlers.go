@@ -121,7 +121,7 @@ func GetSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *h
 		return
 	}
 
-	// Converts the "id" string to an integer
+	// Converts the "specific_documentation_id" string to an integer
 	studentID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")

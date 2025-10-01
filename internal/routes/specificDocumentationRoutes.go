@@ -41,7 +41,7 @@ func RegisterSpecificDocumentationRoutes(router *mux.Router, db *sql.DB) {
 			db,
 			"specific_documentation",
 			"specific_documentation_id",
-			"id",
+			"student_id",
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch r.Method {
 				case http.MethodGet:
@@ -58,7 +58,7 @@ func RegisterSpecificDocumentationRoutes(router *mux.Router, db *sql.DB) {
 	).Methods("GET", "PUT", "DELETE", "OPTIONS")
 
 	sdRouter.Handle(
-		"/student/{id}",
+		"/student/{student_id}",
 		utils.RollMiddleware(
 			map[string][]string{
 				"GET": {"student", "admin"},

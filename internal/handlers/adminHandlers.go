@@ -244,7 +244,7 @@ func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Converts the "id" string to an integer
+	// Converts the "admin_id" string to an integer
 	adminID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")

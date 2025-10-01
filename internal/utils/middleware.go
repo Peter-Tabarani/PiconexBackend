@@ -113,9 +113,9 @@ func OwnershipMiddleware(next http.Handler) http.Handler {
 
 		// Extract requested resource ID from route variables
 		vars := mux.Vars(r)
-		idStr := vars["id"]
+		idStr := vars["student_id"]
 
-		id, err := strconv.Atoi(idStr)
+		studentID, err := strconv.Atoi(idStr)
 		if err != nil {
 			WriteError(w, http.StatusBadRequest, "Invalid student ID")
 			log.Println("Invalid ID parse error:", err)
@@ -123,9 +123,9 @@ func OwnershipMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Students can only access their own ID
-		if role == "student" && userID != id {
+		if role == "student" && userID != studentID {
 			WriteError(w, http.StatusForbidden, "Forbidden: not owner")
-			log.Printf("Ownership error: student %d tried to access student %d\n", userID, id)
+			log.Printf("Ownership error: student %d tried to access student %d\n", userID, studentID)
 			return
 		}
 
@@ -148,7 +148,7 @@ func ResourceOwnershipMiddleware(db *sql.DB, table, idColumn, studentColumn stri
 		if role == "student" {
 			vars := mux.Vars(r)
 			idStr := vars[idColumn]
-			id, err := strconv.Atoi(idStr)
+			studentID, err := strconv.Atoi(idStr)
 			if err != nil {
 				WriteError(w, http.StatusBadRequest, "Invalid ID")
 				log.Println("Ownership error: invalid ID parse:", err)
@@ -158,7 +158,7 @@ func ResourceOwnershipMiddleware(db *sql.DB, table, idColumn, studentColumn stri
 			// Check ownership in DB
 			var ownerID int
 			query := fmt.Sprintf("SELECT %s FROM %s WHERE %s = ?", studentColumn, table, idColumn)
-			err = db.QueryRowContext(r.Context(), query, id).Scan(&ownerID)
+			err = db.QueryRowContext(r.Context(), query, studentID).Scan(&ownerID)
 			if err != nil {
 				if err == sql.ErrNoRows {
 					WriteError(w, http.StatusNotFound, "Resource not found")
@@ -172,7 +172,7 @@ func ResourceOwnershipMiddleware(db *sql.DB, table, idColumn, studentColumn stri
 
 			if ownerID != userID {
 				WriteError(w, http.StatusForbidden, "Forbidden: not owner")
-				log.Printf("Ownership error: student %d tried to access %s=%d in %s\n", userID, idColumn, id, table)
+				log.Printf("Ownership error: student %d tried to access %s=%d in %s\n", userID, idColumn, studentID, table)
 				return
 			}
 		}
@@ -213,7 +213,7 @@ func ResourceCreateOwnershipMiddleware(next http.Handler) http.Handler {
 			}
 
 			// Check for student_id field
-			if sid, ok := payload["id"].(float64); ok {
+			if sid, ok := payload["student_id"].(float64); ok {
 				if int(sid) != userID {
 					WriteError(w, http.StatusForbidden, "You can only create records for yourself")
 					log.Printf("Ownership create error: student %d tried to create record for student %d\n", userID, int(sid))

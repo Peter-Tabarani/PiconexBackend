@@ -98,13 +98,13 @@ func GetDisabilityByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func GetDisabilitiesByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["id"]
+	idStr, ok := vars["student_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
 		return
 	}
 
-	// Converts the "id" string to an integer
+	// Converts the "student_id" string to an integer
 	studentID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
@@ -117,7 +117,7 @@ func GetDisabilitiesByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Reque
 		SELECT d.disability_id, d.name, d.description
 		FROM stu_dis sd
 		JOIN disability d ON sd.disability_id = d.disability_id
-		WHERE sd.id = ?
+		WHERE sd.studentid = ?
 	`
 
 	// Executes written SQL

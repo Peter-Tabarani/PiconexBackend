@@ -69,7 +69,7 @@ func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Converts the "id" string to an integer
+	// Converts the "accommodation_id" string to an integer
 	accommodationID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid accommodation ID")
@@ -110,13 +110,13 @@ func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["id"]
+	idStr, ok := vars["student_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
 		return
 	}
 
-	// Converts the "id" string to an integer
+	// Converts the "student_id" string to an integer
 	studentID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
@@ -129,7 +129,7 @@ func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Req
 		SELECT a.accommodation_id, a.name, a.description
 		FROM stu_accom sa
 		JOIN accommodation a ON sa.accommodation_id = a.accommodation_id
-		WHERE sa.id = ?
+		WHERE sa.student_id = ?
 	`
 
 	// Executes written SQL
