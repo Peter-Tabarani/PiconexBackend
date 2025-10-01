@@ -40,7 +40,7 @@ curl -X POST http://localhost:8080/point-of-contact \
 "id": 15
 }'
 
-curl -X GET http://localhost:8080/poc-admin \
+curl -X GET http://localhost:8080/admin/128 \
  -H "Authorization: Bearer superkey"
 
 curl -X GET http://localhost:8080/personal-documentation \
@@ -57,4 +57,26 @@ curl -X PUT http://localhost:8080/point-of-contact/24 \
 "duration": 60,
 "event_type": "trad",
 "id": 15
+}'
+
+curl -X POST http://localhost:8080/admin \
+ -H "Authorization: Bearer superkey" \
+ -H "Content-Type: application/json" \
+ -d '{
+"first_name": "Michael",
+"last_name": "Anderson",
+"email": "mike@example.com",
+"phone_number": "610-555-4411",
+"sex": "male",
+"birthday": "1990-11-11",
+"address": "77 University Dr",
+"city": "Bethlehem",
+"state": "PA",
+"zip_code": "18015",
+"country": "USA",
+"preferred_name": "Mike",
+"pronouns": "he/him",
+"gender": "Male",
+"password": "securepassword123",
+"title": "Director"
 }'

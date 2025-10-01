@@ -198,8 +198,17 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Executes SQL to insert into activity table
-	res, err := db.ExecContext(r.Context(),
+	res, err := tx.ExecContext(r.Context(),
 		"INSERT INTO activity (activity_datetime) VALUES (?)",
 		sd.ActivityDateTime,
 	)
@@ -220,7 +229,7 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Inserts into documentation table
-	_, err = db.ExecContext(r.Context(),
+	_, err = tx.ExecContext(r.Context(),
 		"INSERT INTO documentation (documentation_id, file) VALUES (?, ?)",
 		lastID, sd.File,
 	)
@@ -233,7 +242,7 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Inserts into specific_documentation table
-	_, err = db.ExecContext(r.Context(),
+	_, err = tx.ExecContext(r.Context(),
 		"INSERT INTO specific_documentation (specific_documentation_id, student_id, doc_type) VALUES (?, ?, ?)",
 		lastID, sd.StudentID, sd.DocType,
 	)
@@ -242,6 +251,13 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert specific documentation")
 		log.Println("DB insert error:", err)
+		return
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
 		return
 	}
 
@@ -290,8 +306,17 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Executes written SQL to update the activity data
-	_, err = db.ExecContext(r.Context(),
+	_, err = tx.ExecContext(r.Context(),
 		"UPDATE activity SET activity_datetime=? WHERE activity_id=?",
 		sd.ActivityDateTime, specificDocumentationID,
 	)
@@ -304,7 +329,7 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Executes written SQL to update the documentation data
-	_, err = db.ExecContext(r.Context(),
+	_, err = tx.ExecContext(r.Context(),
 		"UPDATE documentation SET file=? WHERE documentation_id=?",
 		sd.File, specificDocumentationID,
 	)
@@ -317,7 +342,7 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Executes written SQL to update the specific documentation data
-	res, err := db.ExecContext(r.Context(),
+	res, err := tx.ExecContext(r.Context(),
 		"UPDATE specific_documentation SET doc_type=?, student_id=? WHERE specific_documentation_id=?",
 		sd.DocType, sd.StudentID, specificDocumentationID,
 	)
@@ -345,6 +370,13 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
+		return
+	}
+
 	// Writes JSON response & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Specific documentation updated successfully",
@@ -368,8 +400,17 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Executes written SQL to delete the specific documentation
-	res, err := db.ExecContext(r.Context(),
+	res, err := tx.ExecContext(r.Context(),
 		"DELETE FROM specific_documentation WHERE specific_documentation_id = ?", specificDocumentationID)
 
 	// Error message if ExecContext fails
@@ -396,7 +437,7 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Executes written SQL to delete the documentation
-	res, err = db.ExecContext(r.Context(),
+	res, err = tx.ExecContext(r.Context(),
 		"DELETE FROM documentation WHERE documentation_id = ?", specificDocumentationID)
 
 	// Error message if ExecContext fails
@@ -423,7 +464,7 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Executes written SQL to delete the activity
-	res, err = db.ExecContext(r.Context(),
+	res, err = tx.ExecContext(r.Context(),
 		"DELETE FROM activity WHERE activity_id = ?", specificDocumentationID)
 
 	// Error message if ExecContext fails
@@ -446,6 +487,13 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Activity not found")
+		return
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
 		return
 	}
 

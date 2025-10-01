@@ -31,7 +31,7 @@ func RegisterStudentRoutes(router *mux.Router, db *sql.DB) {
 	).Methods("GET", "POST", "OPTIONS")
 
 	studentRouter.Handle(
-		"/{id}",
+		"/{student_id}",
 		utils.RollMiddleware(map[string][]string{
 			"GET":    {"student", "admin"},
 			"PUT":    {"student", "admin"},

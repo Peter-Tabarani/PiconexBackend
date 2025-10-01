@@ -132,8 +132,17 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Executes SQL to insert into activity table
-	res, err := db.ExecContext(r.Context(),
+	res, err := tx.ExecContext(r.Context(),
 		"INSERT INTO activity (activity_datetime) VALUES (?)",
 		pd.ActivityDateTime,
 	)
@@ -156,7 +165,7 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Inserts into documentation table
-	_, err = db.ExecContext(r.Context(),
+	_, err = tx.ExecContext(r.Context(),
 		"INSERT INTO documentation (documentation_id, file) VALUES (?, ?)",
 		lastID, pd.File,
 	)
@@ -169,7 +178,7 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Inserts into personal_documentation table
-	_, err = db.ExecContext(r.Context(),
+	_, err = tx.ExecContext(r.Context(),
 		"INSERT INTO personal_documentation (personal_documentation_id, admin_id) VALUES (?, ?)",
 		lastID, pd.AdminID,
 	)
@@ -178,6 +187,13 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert personal documentation")
 		log.Println("DB insert error:", err)
+		return
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
 		return
 	}
 
@@ -226,8 +242,17 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Executes written SQL to update the activity data
-	_, err = db.ExecContext(r.Context(),
+	_, err = tx.ExecContext(r.Context(),
 		"UPDATE activity SET activity_datetime=? WHERE activity_id=?",
 		pd.ActivityDateTime, personalDocumentationID,
 	)
@@ -240,7 +265,7 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Executes written SQL to update the documentation data
-	_, err = db.ExecContext(r.Context(),
+	_, err = tx.ExecContext(r.Context(),
 		"UPDATE documentation SET file=? WHERE documentation_id=?",
 		pd.File, personalDocumentationID,
 	)
@@ -253,7 +278,7 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Executes written SQL to update the personal documentation data
-	res, err := db.ExecContext(r.Context(),
+	res, err := tx.ExecContext(r.Context(),
 		"UPDATE personal_documentation SET admin_id=? WHERE personal_documentation_id=?",
 		pd.AdminID, personalDocumentationID,
 	)
@@ -281,6 +306,13 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
+		return
+	}
+
 	// Writes JSON response confirming update & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Personal documentation updated successfully",
@@ -304,8 +336,17 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Executes written SQL to delete the personal documentation
-	res, err := db.ExecContext(r.Context(),
+	res, err := tx.ExecContext(r.Context(),
 		"DELETE FROM personal_documentation WHERE personal_documentation_id = ?", personalDocumentationID)
 
 	// Error message if ExecContext fails
@@ -332,7 +373,7 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Executes written SQL to delete the documentation
-	res, err = db.ExecContext(r.Context(),
+	res, err = tx.ExecContext(r.Context(),
 		"DELETE FROM documentation WHERE documentation_id = ?", personalDocumentationID)
 
 	// Error message if ExecContext fails
@@ -359,7 +400,7 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Executes written SQL to delete the activity
-	res, err = db.ExecContext(r.Context(),
+	res, err = tx.ExecContext(r.Context(),
 		"DELETE FROM activity WHERE activity_id = ?", personalDocumentationID)
 
 	// Error message if ExecContext fails
@@ -382,6 +423,13 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Activity not found")
+		return
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
 		return
 	}
 

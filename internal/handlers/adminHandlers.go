@@ -149,8 +149,17 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Executes SQL to insert into person table
-	res, err := db.ExecContext(r.Context(),
+	res, err := tx.ExecContext(r.Context(),
 		`INSERT INTO person (
 		first_name, preferred_name, middle_name, last_name,
 		email, phone_number, pronouns, sex, gender,
@@ -179,7 +188,7 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Executes SQL to insert into admin table
-	_, err = db.ExecContext(r.Context(),
+	_, err = tx.ExecContext(r.Context(),
 		"INSERT INTO admin (admin_id, title) VALUES (?, ?)",
 		lastID, a.Title,
 	)
@@ -200,13 +209,22 @@ func CreateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Adds hash and role to the users table
-	_, err = db.ExecContext(r.Context(),
+	_, err = tx.ExecContext(r.Context(),
 		`INSERT INTO users (id, password_hash, role) VALUES (?, ?, ?)`,
 		lastID, string(hashedPassword), "admin",
 	)
+
+	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to create admin login")
 		log.Println("DB insert error:", err)
+		return
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
 		return
 	}
 
@@ -254,8 +272,17 @@ func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Executes written SQL to update the person data
-	_, err = db.ExecContext(r.Context(),
+	_, err = tx.ExecContext(r.Context(),
 		`UPDATE person SET
 			first_name=?, preferred_name=?, middle_name=?, last_name=?,
 			email=?, phone_number=?, pronouns=?, sex=?, gender=?,
@@ -275,7 +302,7 @@ func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Executes written SQL to update the admin title
-	res, err := db.ExecContext(r.Context(),
+	res, err := tx.ExecContext(r.Context(),
 		"UPDATE admin SET title=? WHERE admin_id=?",
 		a.Title, adminID,
 	)
@@ -303,6 +330,13 @@ func UpdateAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
+		return
+	}
+
 	// Writes JSON response confirming update & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Admin updated successfully",
@@ -326,8 +360,17 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Executes SQL to delete from admin
-	res, err := db.ExecContext(r.Context(),
+	res, err := tx.ExecContext(r.Context(),
 		"DELETE FROM admin WHERE admin_id = ?",
 		adminID,
 	)
@@ -356,7 +399,7 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Executes SQL to delete from person
-	res, err = db.ExecContext(r.Context(), "DELETE FROM person WHERE person_id = ?", adminID)
+	res, err = tx.ExecContext(r.Context(), "DELETE FROM person WHERE person_id = ?", adminID)
 
 	// Error message if ExecContext fails
 	if err != nil {
@@ -378,6 +421,13 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Person not found")
+		return
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
 		return
 	}
 

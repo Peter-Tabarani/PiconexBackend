@@ -32,7 +32,7 @@ func RegisterPointOfContactRoutes(router *mux.Router, db *sql.DB) {
 	).Methods("GET", "POST", "OPTIONS")
 
 	pocRouter.Handle(
-		"/{activity_id}",
+		"/{point_of_contact_id}",
 		utils.RollMiddleware(map[string][]string{
 			"GET":    {"student", "admin"},
 			"PUT":    {"student", "admin"},
@@ -40,7 +40,7 @@ func RegisterPointOfContactRoutes(router *mux.Router, db *sql.DB) {
 		}, utils.ResourceOwnershipMiddleware(
 			db,
 			"point_of_contact",
-			"activity_id",
+			"point_of_contact_id",
 			"id",
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch r.Method {

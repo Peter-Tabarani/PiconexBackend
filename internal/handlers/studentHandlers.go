@@ -245,8 +245,17 @@ func CreateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Executes SQL to insert into person table
-	res, err := db.ExecContext(r.Context(),
+	res, err := tx.ExecContext(r.Context(),
 		`INSERT INTO person (
 			first_name, preferred_name, middle_name, last_name, email,
 			phone_number, pronouns, sex, gender, birthday,
@@ -275,7 +284,7 @@ func CreateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Executes SQL to insert into student table
-	_, err = db.ExecContext(r.Context(),
+	_, err = tx.ExecContext(r.Context(),
 		`INSERT INTO student (student_id, year, start_year, planned_grad_year, housing, dining)
 		VALUES (?, ?, ?, ?, ?, ?)`,
 		lastID, s.Year, s.StartYear, s.PlannedGradYear, s.Housing, s.Dining,
@@ -285,6 +294,13 @@ func CreateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert into student")
 		log.Println("DB insert error:", err)
+		return
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
 		return
 	}
 
@@ -332,8 +348,17 @@ func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Execute direct SQL update
-	_, err = db.ExecContext(r.Context(),
+	_, err = tx.ExecContext(r.Context(),
 		`UPDATE person
 		 SET first_name = ?, preferred_name = ?, middle_name = ?, last_name = ?,
 		     email = ?, phone_number = ?, pronouns = ?, sex = ?, gender = ?,
@@ -353,7 +378,7 @@ func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Optionally update student table fields
-	res, err := db.ExecContext(r.Context(),
+	res, err := tx.ExecContext(r.Context(),
 		`UPDATE student
 		 SET year = ?, start_year = ?, planned_grad_year = ?, housing = ?, dining = ?
 		 WHERE student_id = ?`,
@@ -384,6 +409,13 @@ func UpdateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
+		return
+	}
+
 	// Writes JSON response confirming update & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Student updated successfully",
@@ -400,17 +432,26 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Converts the "student_id" string to an integer
-	id, err := strconv.Atoi(idStr)
+	studentID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
 		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Executes SQL to delete from student
-	res, err := db.ExecContext(r.Context(),
+	res, err := tx.ExecContext(r.Context(),
 		"DELETE FROM student WHERE student_id = ?",
-		id,
+		studentID,
 	)
 
 	// Error message if ExecContext fails
@@ -437,7 +478,7 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Executes SQL to delete from person
-	res, err = db.ExecContext(r.Context(), "DELETE FROM person WHERE person_id = ?", id)
+	res, err = tx.ExecContext(r.Context(), "DELETE FROM person WHERE person_id = ?", studentID)
 
 	// Error message if ExecContext fails
 	if err != nil {
@@ -459,6 +500,13 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Person not found")
+		return
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
 		return
 	}
 

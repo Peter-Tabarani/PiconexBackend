@@ -315,17 +315,26 @@ func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Automatically set activity_datetime to now
+	poc.ActivityDateTime = time.Now()
+
 	// Validates required fields
 	if poc.StudentID == 0 || poc.Duration == 0 || poc.EventType == "" || poc.EventDateTime.IsZero() {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
-	// Automatically set activity_datetime to now
-	poc.ActivityDateTime = time.Now()
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
 
 	// Executes written SQL to insert a new activity
-	res, err := db.ExecContext(r.Context(),
+	res, err := tx.ExecContext(r.Context(),
 		`INSERT INTO activity (activity_datetime) VALUES (?)`,
 		poc.ActivityDateTime,
 	)
@@ -348,7 +357,7 @@ func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Executes written SQL to insert a new point of contact
-	_, err = db.ExecContext(r.Context(),
+	_, err = tx.ExecContext(r.Context(),
 		`INSERT INTO point_of_contact (point_of_contact_id, event_datetime, duration, event_type, student_id) VALUES (?, ?, ?, ?, ?)`,
 		lastID, poc.EventDateTime, poc.Duration, poc.EventType, poc.StudentID,
 	)
@@ -357,6 +366,13 @@ func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert point of contact")
 		log.Println("DB insert point_of_contact error:", err)
+		return
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
 		return
 	}
 
@@ -405,8 +421,17 @@ func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Updates the activity table first
-	_, err = db.ExecContext(r.Context(),
+	_, err = tx.ExecContext(r.Context(),
 		`UPDATE activity SET activity_datetime=? WHERE activity_id=?`,
 		poc.ActivityDateTime, pointOfContactID)
 
@@ -418,7 +443,7 @@ func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Updates the point_of_contact table
-	res, err := db.ExecContext(r.Context(),
+	res, err := tx.ExecContext(r.Context(),
 		`UPDATE point_of_contact SET event_datetime=?, duration=?, event_type=?, student_id=? WHERE point_of_contact_id=?`,
 		poc.EventDateTime, poc.Duration, poc.EventType, poc.StudentID, pointOfContactID)
 
@@ -445,6 +470,13 @@ func UpdatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
+		return
+	}
+
 	// Writes JSON response confirming update & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Point of Contact updated successfully",
@@ -468,8 +500,17 @@ func DeletePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Executes SQL to delete from point of contact
-	res, err := db.ExecContext(r.Context(),
+	res, err := tx.ExecContext(r.Context(),
 		"DELETE FROM point_of_contact WHERE point_of_contact_id = ?",
 		pointOfContactID,
 	)
@@ -498,7 +539,7 @@ func DeletePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Executes written SQL to delete the point of contact
-	res, err = db.ExecContext(r.Context(),
+	res, err = tx.ExecContext(r.Context(),
 		"DELETE FROM activity WHERE activity_id = ?", pointOfContactID)
 
 	// Error message if ExecContext fails
@@ -521,6 +562,13 @@ func DeletePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Activity not found")
+		return
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
 		return
 	}
 

@@ -26,7 +26,7 @@ func RegisterPersonRoutes(router *mux.Router, db *sql.DB) {
 		})),
 	).Methods("GET", "OPTIONS")
 
-	personRouter.Handle("/{id}",
+	personRouter.Handle("/{person_id}",
 		utils.RollMiddleware(map[string][]string{
 			"GET": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

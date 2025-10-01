@@ -30,7 +30,7 @@ func RegisterPersonalDocumentationRoutes(router *mux.Router, db *sql.DB) {
 		})),
 	).Methods("GET", "POST", "OPTIONS")
 
-	pdRouter.Handle("/{activity_id}",
+	pdRouter.Handle("/{personal_documentation_id}",
 		utils.RollMiddleware(map[string][]string{
 			"GET":    {"admin"},
 			"PUT":    {"admin"},

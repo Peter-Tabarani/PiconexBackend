@@ -26,7 +26,7 @@ func RegisterDocumentationRoutes(router *mux.Router, db *sql.DB) {
 		})),
 	).Methods("GET", "OPTIONS")
 
-	documentationRouter.Handle("/{activity_id}",
+	documentationRouter.Handle("/{documentation_id}",
 		utils.RollMiddleware(map[string][]string{
 			"GET": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
