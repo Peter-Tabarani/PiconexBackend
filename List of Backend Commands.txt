@@ -52,7 +52,7 @@ PointOfContact[] getPastPointsOfContactByStudentIDAndAdminID(student_id: number,
 PointOfContact[] getFuturePointsOfContactByStudentID(student_id: number)
 PointOfContact[] getFuturePointsOfContactByStudentIDAndAdminID(student_id: number, admin_id: number)
 {Disability, hasDisability: boolean}[] getDisabilitiesByStudentID(student_id: number)
-{Accommodation, hasAccommodation: boolean}[] getAccommodationsByStudentID(student_id: number) // NEED TO MODIFY
+{Accommodation, hasAccommodation: boolean}[] getAccommodationsByStudentID(student_id: number)
 
 NEED TO ADD
 {Activity, name: string} getIncomingActivity(activity_id: number)
