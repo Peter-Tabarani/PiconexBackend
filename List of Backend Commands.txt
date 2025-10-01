@@ -49,7 +49,7 @@ SpecificDocumentation[] getSpecificDocumentationByStudentID(student_id: number)
 PointOfContact[] getPointsOfContactByAdminIDAndDate(admin_id: number, date: Date)
 PointOfContact[] getFuturePointsOfContactByAdminID(admin_id: number)
 PointOfContact[] getPastPointsOfContactByStudentIDAndAdminID(student_id: number, admin_id: number)
-PointOfContact[] getFuturePointsOfContactByStudentID(student_id: number) // NEED TO DO
+PointOfContact[] getFuturePointsOfContactByStudentID(student_id: number)
 PointOfContact[] getFuturePointsOfContactByStudentIDAndAdminID(student_id: number, admin_id: number)
 {Disability, hasDisability: boolean}[] getDisabilitiesByStudentID(student_id: number)
 {Accommodation, hasAccommodation: boolean}[] getAccommodationsByStudentID(student_id: number) // NEED TO MODIFY
