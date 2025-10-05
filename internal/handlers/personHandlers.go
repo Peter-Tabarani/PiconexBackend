@@ -18,7 +18,7 @@ func GetPersons(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
 		SELECT
-			id, first_name, preferred_name, middle_name, last_name,
+			person_id, first_name, preferred_name, middle_name, last_name,
 			email, phone_number, pronouns, sex, gender,
 			birthday, address, city, state, zip_code, country
 		FROM person
@@ -43,7 +43,7 @@ func GetPersons(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		var p models.Person
 		// Parses the current data into fields of "p" variable
 		if err := rows.Scan(
-			&p.ID, &p.FirstName, &p.PreferredName, &p.MiddleName, &p.LastName,
+			&p.PersonID, &p.FirstName, &p.PreferredName, &p.MiddleName, &p.LastName,
 			&p.Email, &p.PhoneNumber, &p.Pronouns, &p.Sex, &p.Gender,
 			&p.Birthday, &p.Address, &p.City, &p.State, &p.ZipCode, &p.Country,
 		); err != nil {
@@ -69,13 +69,13 @@ func GetPersons(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func GetPersonByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["id"]
+	idStr, ok := vars["person_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing person ID")
 		return
 	}
 
-	// Converts the "id" string to an integer
+	// Converts the "person_id" string to an integer
 	personID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid person ID")
@@ -86,7 +86,7 @@ func GetPersonByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
 		SELECT
-			id, first_name, preferred_name, middle_name, last_name,
+			person_id, first_name, preferred_name, middle_name, last_name,
 			email, phone_number, pronouns, sex, gender,
 			birthday, address, city, state, zip_code, country
 		FROM person
@@ -98,7 +98,7 @@ func GetPersonByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL and retrieves only one row
 	err = db.QueryRowContext(r.Context(), query, personID).Scan(
-		&p.ID, &p.FirstName, &p.PreferredName, &p.MiddleName, &p.LastName,
+		&p.PersonID, &p.FirstName, &p.PreferredName, &p.MiddleName, &p.LastName,
 		&p.Email, &p.PhoneNumber, &p.Pronouns, &p.Sex, &p.Gender,
 		&p.Birthday, &p.Address, &p.City, &p.State, &p.ZipCode, &p.Country,
 	)

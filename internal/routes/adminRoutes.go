@@ -30,7 +30,7 @@ func RegisterAdminRoutes(router *mux.Router, db *sql.DB) {
 		})),
 	).Methods("GET", "POST", "OPTIONS")
 
-	adminRouter.Handle("/{id}",
+	adminRouter.Handle("/{admin_id}",
 		utils.RollMiddleware(map[string][]string{
 			"GET":    {"admin"},
 			"PUT":    {"admin"},

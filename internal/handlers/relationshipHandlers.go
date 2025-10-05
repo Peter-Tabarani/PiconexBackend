@@ -63,13 +63,13 @@ func GetPinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func GetPinnedByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["id"]
+	idStr, ok := vars["admin_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID")
 		return
 	}
 
-	// Converts the "id" string to an integer
+	// Converts the "admin_id" string to an integer
 	adminID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
@@ -80,13 +80,13 @@ func GetPinnedByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
 		SELECT
-			s.id, pe.first_name, pe.preferred_name, pe.middle_name, pe.last_name,
+			s.student_id, pe.first_name, pe.preferred_name, pe.middle_name, pe.last_name,
 			pe.email, pe.phone_number, pe.pronouns, pe.sex, pe.gender, pe.birthday,
 			pe.address, pe.city, pe.state, pe.zip_code, pe.country,
 			s.year, s.start_year, s.planned_grad_year, s.housing, s.dining
 		FROM pinned p
-		JOIN student s ON p.student_id = s.id
-		JOIN person pe ON s.id = pe.id
+		JOIN student s ON p.student_id = s.student_id
+		JOIN person pe ON s.student_id = pe.person_id
 		WHERE p.admin_id = ?
 	`
 
@@ -109,7 +109,7 @@ func GetPinnedByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		var s models.Student
 		// Parses the current row into student struct
 		if err := rows.Scan(
-			&s.ID, &s.FirstName, &s.PreferredName, &s.MiddleName, &s.LastName,
+			&s.StudentID, &s.FirstName, &s.PreferredName, &s.MiddleName, &s.LastName,
 			&s.Email, &s.PhoneNumber, &s.Pronouns, &s.Sex, &s.Gender, &s.Birthday,
 			&s.Address, &s.City, &s.State, &s.ZipCode, &s.Country,
 			&s.Year, &s.StartYear, &s.PlannedGradYear, &s.Housing, &s.Dining,
@@ -278,7 +278,7 @@ func DeletePinnedByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func GetStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
-		SELECT id, accommodation_id
+		SELECT student_id, accommodation_id
 		FROM stu_accom
 	`
 
@@ -300,7 +300,7 @@ func GetStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var sa models.StudentAccommodation
 		// Parses the current data into fields of "sa" variable
-		if err := rows.Scan(&sa.ID, &sa.AccommodationID); err != nil {
+		if err := rows.Scan(&sa.StudentID, &sa.AccommodationID); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse student accommodation")
 			log.Println("Row scan error:", err)
 			return
@@ -332,15 +332,15 @@ func CreateStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validates required fields
-	if req.ID == 0 || req.AccommodationID == 0 {
+	if req.StudentID == 0 || req.AccommodationID == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
 	// Executes written SQL to insert student accommodation record
 	_, err := db.ExecContext(r.Context(),
-		"INSERT INTO stu_accom (id, accommodation_id) VALUES (?, ?)",
-		req.ID, req.AccommodationID,
+		"INSERT INTO stu_accom (student_id, accommodation_id) VALUES (?, ?)",
+		req.StudentID, req.AccommodationID,
 	)
 
 	// Error message if ExecContext fails
@@ -359,7 +359,7 @@ func CreateStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func DeleteStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	studentIDStr, ok1 := vars["id"]
+	studentIDStr, ok1 := vars["student_id"]
 	accomIDStr, ok2 := vars["accommodation_id"]
 	if !ok1 || !ok2 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing student or accommodation ID")
@@ -382,7 +382,7 @@ func DeleteStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL to delete student accommodation record
 	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM stu_accom WHERE id = ? AND accommodation_id = ?",
+		"DELETE FROM stu_accom WHERE student_id = ? AND accommodation_id = ?",
 		studentID, accomID,
 	)
 
@@ -416,7 +416,7 @@ func DeleteStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func DeleteStuAccomByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extract student ID from path
 	vars := mux.Vars(r)
-	studentIDStr, ok := vars["id"]
+	studentIDStr, ok := vars["student_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
 		return
@@ -432,7 +432,7 @@ func DeleteStuAccomByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Reques
 
 	// Execute SQL to delete all student accommodations by student ID
 	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM stu_accom WHERE id = ?",
+		"DELETE FROM stu_accom WHERE student_id = ?",
 		studentID,
 	)
 	if err != nil {
@@ -464,7 +464,7 @@ func DeleteStuAccomByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Reques
 func GetStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
-		SELECT id, disability_id
+		SELECT student_id, disability_id
 		FROM stu_dis
 	`
 
@@ -486,7 +486,7 @@ func GetStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var sd models.StudentDisability
 		// Parses the current data into fields of "sd" variable
-		if err := rows.Scan(&sd.ID, &sd.DisabilityID); err != nil {
+		if err := rows.Scan(&sd.StudentID, &sd.DisabilityID); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse student disability")
 			log.Println("Row scan error:", err)
 			return
@@ -518,15 +518,15 @@ func CreateStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validates required fields
-	if req.ID == 0 || req.DisabilityID == 0 {
+	if req.StudentID == 0 || req.DisabilityID == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
 	// Executes written SQL to insert student disability record
 	_, err := db.ExecContext(r.Context(),
-		"INSERT INTO stu_dis (id, disability_id) VALUES (?, ?)",
-		req.ID, req.DisabilityID,
+		"INSERT INTO stu_dis (student_id, disability_id) VALUES (?, ?)",
+		req.StudentID, req.DisabilityID,
 	)
 
 	// Error message if ExecContext fails
@@ -545,7 +545,7 @@ func CreateStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func DeleteStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok1 := vars["id"]
+	studentIDStr, ok1 := vars["student_id"]
 	disabilityIDStr, ok2 := vars["disability_id"]
 	if !ok1 || !ok2 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing student or disability ID")
@@ -553,7 +553,7 @@ func DeleteStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Converts path variables to integers
-	id, err := strconv.Atoi(idStr)
+	studentID, err := strconv.Atoi(studentIDStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
 		log.Println("Invalid student ID parse error:", err)
@@ -568,8 +568,8 @@ func DeleteStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL to delete student disability record
 	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM stu_dis WHERE id = ? AND disability_id = ?",
-		id, disabilityID,
+		"DELETE FROM stu_dis WHERE student_id = ? AND disability_id = ?",
+		studentID, disabilityID,
 	)
 
 	// Error message if ExecContext fails
@@ -602,14 +602,14 @@ func DeleteStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func DeleteStuDisByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extract student ID from path
 	vars := mux.Vars(r)
-	idStr, ok := vars["id"]
+	studentIDStr, ok := vars["student_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
 		return
 	}
 
 	// Convert student ID to int
-	id, err := strconv.Atoi(idStr)
+	studentID, err := strconv.Atoi(studentIDStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
 		log.Println("Invalid student ID parse error:", err)
@@ -618,8 +618,8 @@ func DeleteStuDisByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request)
 
 	// Execute SQL delete by student ID
 	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM stu_dis WHERE id = ?",
-		id,
+		"DELETE FROM stu_dis WHERE student_id = ?",
+		studentID,
 	)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete student disabilities")
@@ -650,15 +650,14 @@ func DeleteStuDisByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request)
 func GetPocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
-		SELECT activity_id, id
-		FROM poc_adm
+		SELECT point_of_contact_id, admin_id
+		FROM poc_admin
 	`
 
 	// Executes written SQL
 	rows, err := db.QueryContext(r.Context(), query)
 
 	// Error message if QueryContext fails
-
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain POC admins")
 		log.Println("DB query error:", err)
@@ -673,7 +672,7 @@ func GetPocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var pa models.PocAdmin
 		// Parses the current data into fields of "pa" variable
-		if err := rows.Scan(&pa.ActivityID, &pa.ID); err != nil {
+		if err := rows.Scan(&pa.PointOfContactID, &pa.AdminID); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse POC admin")
 			log.Println("Row scan error:", err)
 			return
@@ -705,15 +704,15 @@ func CreatePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validates required fields
-	if req.ActivityID == 0 || req.ID == 0 {
+	if req.PointOfContactID == 0 || req.AdminID == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
 	// Executes written SQL to insert POC admin record
 	_, err := db.ExecContext(r.Context(),
-		"INSERT INTO poc_adm (activity_id, id) VALUES (?, ?)",
-		req.ActivityID, req.ID,
+		"INSERT INTO poc_admin (point_of_contact_id, admin_id) VALUES (?, ?)",
+		req.PointOfContactID, req.AdminID,
 	)
 
 	// Error message if ExecContext fails
@@ -732,21 +731,21 @@ func CreatePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func DeletePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	activityIDStr, ok1 := vars["activity_id"]
-	idStr, ok2 := vars["id"]
+	pointOfContactIDStr, ok1 := vars["point_of_contact_id"]
+	adminIDStr, ok2 := vars["admin_id"]
 	if !ok1 || !ok2 {
-		utils.WriteError(w, http.StatusBadRequest, "Missing activity or admin ID")
+		utils.WriteError(w, http.StatusBadRequest, "Missing point of contact or admin ID")
 		return
 	}
 
 	// Converts path variables to integers
-	activityID, err := strconv.Atoi(activityIDStr)
+	pointOfContactID, err := strconv.Atoi(pointOfContactIDStr)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
-		log.Println("Invalid activity ID parse error:", err)
+		utils.WriteError(w, http.StatusBadRequest, "Invalid point of contact ID")
+		log.Println("Invalid point of contact ID parse error:", err)
 		return
 	}
-	id, err := strconv.Atoi(idStr)
+	adminID, err := strconv.Atoi(adminIDStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
 		log.Println("Invalid admin ID parse error:", err)
@@ -755,8 +754,8 @@ func DeletePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Executes written SQL to delete POC admin record
 	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM poc_adm WHERE activity_id = ? AND id = ?",
-		activityID, id,
+		"DELETE FROM poc_admin WHERE point_of_contact_id = ? AND admin_id = ?",
+		pointOfContactID, adminID,
 	)
 
 	// Error message if ExecContext fails
@@ -789,29 +788,29 @@ func DeletePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func DeletePocAdminByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extract path variable
 	vars := mux.Vars(r)
-	idStr, ok := vars["id"]
+	adminIDStr, ok := vars["admin_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID")
 		return
 	}
 
 	// Convert path variable to integer
-	id, err := strconv.Atoi(idStr)
+	adminID, err := strconv.Atoi(adminIDStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
 		log.Println("Invalid admin ID parse error:", err)
 		return
 	}
 
-	// Executes written SQL to delete poc_adm records for given admin
+	// Executes written SQL to delete poc_admin records for given admin
 	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM poc_adm WHERE id = ?",
-		id,
+		"DELETE FROM poc_admin WHERE admin_id = ?",
+		adminID,
 	)
 
 	// Error message if ExecContext fails
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete poc_adm records")
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete poc_admin records")
 		log.Println("DB delete error:", err)
 		return
 	}
@@ -826,7 +825,7 @@ func DeletePocAdminByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request)
 
 	// Error message if no rows were deleted
 	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "No poc_adm records found for this admin ID")
+		utils.WriteError(w, http.StatusNotFound, "No poc_admin records found for this admin ID")
 		return
 	}
 

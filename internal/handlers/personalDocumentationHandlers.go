@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 	"github.com/Peter-Tabarani/PiconexBackend/internal/utils"
@@ -18,10 +19,10 @@ func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	// All data being selected for this GET command
 	query := `
 		SELECT
-			pd.activity_id, pd.id, a.date, a.time, d.file
+			pd.personal_documentation_id, pd.admin_id, a.activity_datetime, d.file
 		FROM personal_documentation pd
-		JOIN activity a ON pd.activity_id = a.activity_id
-		JOIN documentation d ON pd.activity_id = d.activity_id
+		JOIN activity a ON pd.personal_documentation_id = a.activity_id
+		JOIN documentation d ON pd.personal_documentation_id = d.documentation_id
 	`
 
 	// Executes written SQL
@@ -42,7 +43,7 @@ func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	for rows.Next() {
 		var pd models.PersonalDocumentation
 		// Parses the current data into fields of "a" variable
-		if err := rows.Scan(&pd.ActivityID, &pd.ID, &pd.Date, &pd.Time, &pd.File); err != nil {
+		if err := rows.Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan personal documentation")
 			log.Println("Row scan error:", err)
 			return
@@ -65,34 +66,34 @@ func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["activity_id"]
+	idStr, ok := vars["personal_documentation_id"]
 	if !ok {
-		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID")
+		utils.WriteError(w, http.StatusBadRequest, "Missing personal documentation ID")
 		return
 	}
 
-	// Converts the "activity_id" string to an integer
-	activityID, err := strconv.Atoi(idStr)
+	// Converts the "personal_documentation_id" string to an integer
+	personalDocumentationID, err := strconv.Atoi(idStr)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
+		utils.WriteError(w, http.StatusBadRequest, "Invalid personal documentation ID")
 		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
 	// SQL query to select a single personal_documentation
 	query := `
-		SELECT pd.activity_id, pd.id, a.date, a.time, d.file
+		SELECT pd.personal_documentation_id, pd.admin_id, a.activity_datetime, d.file
 		FROM personal_documentation pd
-		JOIN activity a ON pd.activity_id = a.activity_id
-		JOIN documentation d ON pd.activity_id = d.activity_id
-		WHERE pd.activity_id = ?
+		JOIN activity a ON pd.personal_documentation_id = a.activity_id
+		JOIN documentation d ON pd.personal_documentation_id = d.documentation_id
+		WHERE pd.personal_documentation_id = ?
 	`
 
 	// Empty variable for personal_documentation struct
 	var pd models.PersonalDocumentation
 
 	// Executes query
-	err = db.QueryRow(query, activityID).Scan(&pd.ActivityID, &pd.ID, &pd.Date, &pd.Time, &pd.File)
+	err = db.QueryRowContext(r.Context(), query, personalDocumentationID).Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File)
 
 	// Error message if no rows are found
 	if err == sql.ErrNoRows {
@@ -122,16 +123,28 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Automatically set activity_datetime to now
+	pd.ActivityDateTime = time.Now()
+
 	// Validates required fields
-	if pd.ID == 0 || pd.Date == "" || pd.Time == "" || len(pd.File) == 0 {
+	if pd.AdminID == 0 || len(pd.File) == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Executes SQL to insert into activity table
-	res, err := db.ExecContext(r.Context(),
-		"INSERT INTO activity (date, time) VALUES (?, ?)",
-		pd.Date, pd.Time,
+	res, err := tx.ExecContext(r.Context(),
+		"INSERT INTO activity (activity_datetime) VALUES (?)",
+		pd.ActivityDateTime,
 	)
 
 	// Error message if ExecContext fails
@@ -152,8 +165,8 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Inserts into documentation table
-	_, err = db.ExecContext(r.Context(),
-		"INSERT INTO documentation (activity_id, file) VALUES (?, ?)",
+	_, err = tx.ExecContext(r.Context(),
+		"INSERT INTO documentation (documentation_id, file) VALUES (?, ?)",
 		lastID, pd.File,
 	)
 
@@ -165,9 +178,9 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Inserts into personal_documentation table
-	_, err = db.ExecContext(r.Context(),
-		"INSERT INTO personal_documentation (activity_id, id) VALUES (?, ?)",
-		lastID, pd.ID,
+	_, err = tx.ExecContext(r.Context(),
+		"INSERT INTO personal_documentation (personal_documentation_id, admin_id) VALUES (?, ?)",
+		lastID, pd.AdminID,
 	)
 
 	// Error message if ExecContext fails
@@ -177,26 +190,33 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
+		return
+	}
+
 	// Writes JSON response & sends a HTTP 201 response code
 	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{
-		"message":     "Personal documentation created successfully",
-		"activity_id": lastID,
+		"message":                   "Personal documentation created successfully",
+		"personal_documentation_id": lastID,
 	})
 }
 
 func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["activity_id"]
+	idStr, ok := vars["personal_documentation_id"]
 	if !ok {
-		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
+		utils.WriteError(w, http.StatusBadRequest, "Missing personal documentation ID")
 		return
 	}
 
-	// Converts the "activity_id" string to an integer
-	activityID, err := strconv.Atoi(idStr)
+	// Converts the "personal_documentation_id" string to an integer
+	personalDocumentationID, err := strconv.Atoi(idStr)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
+		utils.WriteError(w, http.StatusBadRequest, "Invalid personal documentation ID")
 		log.Println("Invalid ID parse error:", err)
 		return
 	}
@@ -213,16 +233,28 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Automatically set activity_datetime to now
+	pd.ActivityDateTime = time.Now()
+
 	// Validates required fields
-	if pd.ID == 0 || pd.Date == "" || pd.Time == "" || len(pd.File) == 0 {
+	if pd.AdminID == 0 || len(pd.File) == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Executes written SQL to update the activity data
-	_, err = db.ExecContext(r.Context(),
-		"UPDATE activity SET date=?, time=? WHERE activity_id=?",
-		pd.Date, pd.Time, activityID,
+	_, err = tx.ExecContext(r.Context(),
+		"UPDATE activity SET activity_datetime=? WHERE activity_id=?",
+		pd.ActivityDateTime, personalDocumentationID,
 	)
 
 	// Error message if ExecContext fails
@@ -233,9 +265,9 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Executes written SQL to update the documentation data
-	_, err = db.ExecContext(r.Context(),
-		"UPDATE documentation SET file=? WHERE activity_id=?",
-		pd.File, activityID,
+	_, err = tx.ExecContext(r.Context(),
+		"UPDATE documentation SET file=? WHERE documentation_id=?",
+		pd.File, personalDocumentationID,
 	)
 
 	// Error message if ExecContext fails
@@ -246,9 +278,9 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Executes written SQL to update the personal documentation data
-	res, err := db.ExecContext(r.Context(),
-		"UPDATE personal_documentation SET id=? WHERE activity_id=?",
-		pd.ID, activityID,
+	res, err := tx.ExecContext(r.Context(),
+		"UPDATE personal_documentation SET admin_id=? WHERE personal_documentation_id=?",
+		pd.AdminID, personalDocumentationID,
 	)
 
 	// Error message if ExecContext fails
@@ -274,6 +306,13 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
+		return
+	}
+
 	// Writes JSON response confirming update & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Personal documentation updated successfully",
@@ -283,25 +322,32 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["activity_id"]
+	idStr, ok := vars["personal_documentation_id"]
 	if !ok {
-		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
+		utils.WriteError(w, http.StatusBadRequest, "Missing personal documentation ID")
 		return
 	}
 
-	// Converts the "activity_id" string to an integer
-	activityID, err := strconv.Atoi(idStr)
+	// Converts the "personal_documentation_id" string to an integer
+	personalDocumentationID, err := strconv.Atoi(idStr)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
+		utils.WriteError(w, http.StatusBadRequest, "Invalid personal documentation ID")
 		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
-	// Executes SQL to delete from activity (will cascade)
-	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM activity WHERE activity_id=?",
-		activityID,
-	)
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
+	// Executes written SQL to delete the personal documentation
+	res, err := tx.ExecContext(r.Context(),
+		"DELETE FROM personal_documentation WHERE personal_documentation_id = ?", personalDocumentationID)
 
 	// Error message if ExecContext fails
 	if err != nil {
@@ -323,6 +369,67 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Personal documentation not found")
+		return
+	}
+
+	// Executes written SQL to delete the documentation
+	res, err = tx.ExecContext(r.Context(),
+		"DELETE FROM documentation WHERE documentation_id = ?", personalDocumentationID)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete documentation")
+		log.Println("DB delete error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err = res.RowsAffected()
+
+	// Error message if RowsAffected fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Documentation not found")
+		return
+	}
+
+	// Executes written SQL to delete the activity
+	res, err = tx.ExecContext(r.Context(),
+		"DELETE FROM activity WHERE activity_id = ?", personalDocumentationID)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete activity")
+		log.Println("DB delete error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err = res.RowsAffected()
+
+	// Error message if RowsAffected fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Activity not found")
+		return
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
 		return
 	}
 

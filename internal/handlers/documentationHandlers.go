@@ -15,9 +15,9 @@ import (
 func GetDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
-		SELECT ac.activity_id, ac.date, ac.time, d.file
+		SELECT d.documentation_id, ac.activity_datetime, d.file
 		FROM documentation d
-		JOIN activity ac ON d.activity_id = ac.activity_id
+		JOIN activity ac ON d.documentation_id = ac.activity_id
 	`
 
 	// Executes written SQL
@@ -38,7 +38,7 @@ func GetDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var d models.Documentation
 		// Parses the current data into fields of "d" variable
-		if err := rows.Scan(&d.ActivityID, &d.Date, &d.Time, &d.File); err != nil {
+		if err := rows.Scan(&d.DocumentationID, &d.ActivityDateTime, &d.File); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse documentations")
 			log.Println("Row scan error:", err)
 			return
@@ -62,33 +62,33 @@ func GetDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 func GetDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["activity_id"]
+	idStr, ok := vars["documentation_id"]
 	if !ok {
-		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
+		utils.WriteError(w, http.StatusBadRequest, "Missing documentation ID")
 		return
 	}
 
-	// Converts the "activity_id" string to an integer
-	activityID, err := strconv.Atoi(idStr)
+	// Converts the "documentation" string to an integer
+	documentationID, err := strconv.Atoi(idStr)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
+		utils.WriteError(w, http.StatusBadRequest, "Invalid documentation ID")
 		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
 	// All data being selected for this GET command
 	query := `
-		SELECT d.activity_id, a.date, a.time, d.file
+		SELECT d.documentation_id, a.activity_datetime, d.file
 		FROM documentation d
-		JOIN activity a ON d.activity_id = a.activity_id
-		WHERE d.activity_id = ?
+		JOIN activity a ON d.documentation_id = a.activity_id
+		WHERE d.documentation_id = ?
 	`
 
 	// Empty variable for documentation struct
 	var d models.Documentation
 
 	// Executes written SQL and retrieves only one row
-	err = db.QueryRowContext(r.Context(), query, activityID).Scan(&d.ActivityID, &d.Date, &d.Time, &d.File)
+	err = db.QueryRowContext(r.Context(), query, documentationID).Scan(&d.DocumentationID, &d.ActivityDateTime, &d.File)
 
 	// Error message if no rows are found
 	if err == sql.ErrNoRows {

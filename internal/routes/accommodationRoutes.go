@@ -50,7 +50,7 @@ func RegisterAccommodationRoutes(router *mux.Router, db *sql.DB) {
 	).Methods("GET", "PUT", "DELETE", "OPTIONS")
 
 	accommodationRouter.Handle(
-		"/student/{id}",
+		"/student/{student_id}",
 		utils.RollMiddleware(
 			map[string][]string{
 				"GET": {"student", "admin"},

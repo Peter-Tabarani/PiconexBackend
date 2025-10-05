@@ -96,15 +96,21 @@ func GetDisabilityByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetDisabilitiesByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extends the struct to have an extra boolean
+	type DisabilityWithBoolean struct {
+		models.Disability
+		HasDisability bool `json:"hasDisability"`
+	}
+
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["id"]
+	idStr, ok := vars["student_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
 		return
 	}
 
-	// Converts the "id" string to an integer
+	// Converts the "student_id" string to an integer
 	studentID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
@@ -114,10 +120,15 @@ func GetDisabilitiesByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Reque
 
 	// All data being selected for this GET command
 	query := `
-		SELECT d.disability_id, d.name, d.description
-		FROM stu_dis sd
-		JOIN disability d ON sd.disability_id = d.disability_id
-		WHERE sd.id = ?
+		SELECT 
+    		d.disability_id,
+    		d.name,
+    		d.description,
+    		CASE WHEN sd.student_id IS NULL THEN FALSE ELSE TRUE END AS has_disability
+		FROM disability d
+		LEFT JOIN stu_dis sd
+    		ON d.disability_id = sd.disability_id
+    		AND sd.student_id = ?
 	`
 
 	// Executes written SQL
@@ -132,13 +143,13 @@ func GetDisabilitiesByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Reque
 	defer rows.Close()
 
 	// Creates an empty slice to obtain results
-	disabilities := make([]models.Disability, 0)
+	disabilities := make([]DisabilityWithBoolean, 0)
 
 	// Reads each row returned by the database
 	for rows.Next() {
-		var d models.Disability
+		var d DisabilityWithBoolean
 		// Parses the current data into fields of "d" variable
-		if err := rows.Scan(&d.DisabilityID, &d.Name, &d.Description); err != nil {
+		if err := rows.Scan(&d.DisabilityID, &d.Name, &d.Description, &d.HasDisability); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse disabilities")
 			log.Println("Row scan error:", err)
 			return

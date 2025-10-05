@@ -43,7 +43,7 @@ func RegisterRelationshipRoutes(router *mux.Router, db *sql.DB) {
 		})),
 	).Methods("DELETE", "OPTIONS")
 
-	pinnedRouter.Handle("/admin/{id}",
+	pinnedRouter.Handle("/admin/{admin_id}",
 		utils.RollMiddleware(map[string][]string{
 			"GET": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -75,7 +75,7 @@ func RegisterRelationshipRoutes(router *mux.Router, db *sql.DB) {
 		})),
 	).Methods("GET", "POST", "OPTIONS")
 
-	stuAccomRouter.Handle("/{id}/{accommodation_id}",
+	stuAccomRouter.Handle("/{student_id}/{accommodation_id}",
 		utils.RollMiddleware(map[string][]string{
 			"DELETE": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -107,7 +107,7 @@ func RegisterRelationshipRoutes(router *mux.Router, db *sql.DB) {
 		})),
 	).Methods("GET", "POST", "OPTIONS")
 
-	stuDisRouter.Handle("/{id}/{disability_id}",
+	stuDisRouter.Handle("/{student_id}/{disability_id}",
 		utils.RollMiddleware(map[string][]string{
 			"DELETE": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -139,7 +139,7 @@ func RegisterRelationshipRoutes(router *mux.Router, db *sql.DB) {
 		})),
 	).Methods("GET", "POST", "OPTIONS")
 
-	pocAdminRouter.Handle("/{activity_id}/{id}",
+	pocAdminRouter.Handle("/{point_of_contact_id}/{admin_id}",
 		utils.RollMiddleware(map[string][]string{
 			"DELETE": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
 	"github.com/Peter-Tabarani/PiconexBackend/internal/utils"
@@ -18,10 +19,11 @@ func GetSpecificDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	// All data being selected for this GET command
 	query := `
 		SELECT
-			sd.activity_id, sd.id, sd.doc_type, a.date, a.time, d.file
+    		sd.specific_documentation_id, sd.student_id, sd.doc_type, a.activity_datetime, d.file
 		FROM specific_documentation sd
-		JOIN activity a ON sd.activity_id = a.activity_id
-		JOIN documentation d ON sd.activity_id = d.activity_id
+		JOIN activity a ON sd.specific_documentation_id = a.activity_id
+		JOIN documentation d ON sd.specific_documentation_id = d.documentation_id
+
 	`
 
 	// Executes written SQL
@@ -42,7 +44,7 @@ func GetSpecificDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	for rows.Next() {
 		var sd models.SpecificDocumentation
 		// Parses the current data into fields of "sd" variable
-		if err := rows.Scan(&sd.Activity_ID, &sd.ID, &sd.DocType, &sd.Date, &sd.Time, &sd.File); err != nil {
+		if err := rows.Scan(&sd.SpecificDocumentationID, &sd.StudentID, &sd.DocType, &sd.ActivityDateTime, &sd.File); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan specific documentation")
 			log.Println("Row scan error:", err)
 			return
@@ -66,34 +68,34 @@ func GetSpecificDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 func GetSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["activity_id"]
+	idStr, ok := vars["specific_documentation_id"]
 	if !ok {
-		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
+		utils.WriteError(w, http.StatusBadRequest, "Missing specific documentation ID")
 		return
 	}
 
-	// Converts the "activity_id" string to an integer
-	activityID, err := strconv.Atoi(idStr)
+	// Converts the "specific_documentation_id" string to an integer
+	specificDocumentationID, err := strconv.Atoi(idStr)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
+		utils.WriteError(w, http.StatusBadRequest, "Invalid specific documentation ID")
 		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
 	// SQL query to select a single specific_documentation
 	query := `
-		SELECT sd.activity_id, sd.id, sd.doc_type, a.date, a.time, d.file
+		SELECT sd.specific_documentation_id, sd.student_id, sd.doc_type, a.activity_datetime, d.file
 		FROM specific_documentation sd
-		JOIN activity a ON sd.activity_id = a.activity_id
-		JOIN documentation d ON sd.activity_id = d.activity_id
-		WHERE sd.activity_id = ?
+		JOIN activity a ON sd.specific_documentation_id = a.activity_id
+		JOIN documentation d ON sd.specific_documentation_id = d.documentation_id
+		WHERE sd.specific_documentation_id = ?
 	`
 
 	// Empty variable for specific_documentation struct
 	var sd models.SpecificDocumentation
 
 	// Executes query
-	err = db.QueryRow(query, activityID).Scan(&sd.Activity_ID, &sd.ID, &sd.DocType, &sd.Date, &sd.Time, &sd.File)
+	err = db.QueryRowContext(r.Context(), query, specificDocumentationID).Scan(&sd.SpecificDocumentationID, &sd.StudentID, &sd.DocType, &sd.ActivityDateTime, &sd.File)
 
 	// Error message if no rows are found
 	if err == sql.ErrNoRows {
@@ -113,13 +115,13 @@ func GetSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 func GetSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["id"]
+	idStr, ok := vars["student_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
 		return
 	}
 
-	// Converts the "id" string to an integer
+	// Converts the "specific_documentation_id" string to an integer
 	studentID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
@@ -129,11 +131,11 @@ func GetSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *h
 
 	// SQL query to select all specific_documentation for a student
 	query := `
-		SELECT sd.activity_id, sd.id, sd.doc_type, a.date, a.time, d.file
+		SELECT sd.specific_documentation_id, sd.student_id, sd.doc_type, a.activity_datetime, d.file
 		FROM specific_documentation sd
-		JOIN activity a ON sd.activity_id = a.activity_id
-		JOIN documentation d ON sd.activity_id = d.activity_id
-		WHERE sd.id = ?
+		JOIN activity a ON sd.specific_documentation_id = a.activity_id
+		JOIN documentation d ON sd.specific_documentation_id = d.documentation_id
+		WHERE sd.student_id = ?
 	`
 
 	// Executes written SQL
@@ -154,7 +156,7 @@ func GetSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *h
 	for rows.Next() {
 		var sd models.SpecificDocumentation
 		// Parses the current data into fields of "sd" variable
-		if err := rows.Scan(&sd.Activity_ID, &sd.ID, &sd.DocType, &sd.Date, &sd.Time, &sd.File); err != nil {
+		if err := rows.Scan(&sd.SpecificDocumentationID, &sd.StudentID, &sd.DocType, &sd.ActivityDateTime, &sd.File); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan specific documentation")
 			log.Println("Row scan error:", err)
 			return
@@ -187,16 +189,28 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Automatically set activity_datetime to now
+	sd.ActivityDateTime = time.Now()
+
 	// Validates required fields
-	if sd.ID == 0 || sd.DocType == "" || sd.Date == "" || sd.Time == "" || len(sd.File) == 0 {
+	if sd.StudentID == 0 || sd.DocType == "" || len(sd.File) == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Executes SQL to insert into activity table
-	res, err := db.ExecContext(r.Context(),
-		"INSERT INTO activity (date, time) VALUES (?, ?)",
-		sd.Date, sd.Time,
+	res, err := tx.ExecContext(r.Context(),
+		"INSERT INTO activity (activity_datetime) VALUES (?)",
+		sd.ActivityDateTime,
 	)
 
 	// Error message if ExecContext fails
@@ -215,8 +229,8 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Inserts into documentation table
-	_, err = db.ExecContext(r.Context(),
-		"INSERT INTO documentation (activity_id, file) VALUES (?, ?)",
+	_, err = tx.ExecContext(r.Context(),
+		"INSERT INTO documentation (documentation_id, file) VALUES (?, ?)",
 		lastID, sd.File,
 	)
 
@@ -228,9 +242,9 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Inserts into specific_documentation table
-	_, err = db.ExecContext(r.Context(),
-		"INSERT INTO specific_documentation (activity_id, id, doc_type) VALUES (?, ?, ?)",
-		lastID, sd.ID, sd.DocType,
+	_, err = tx.ExecContext(r.Context(),
+		"INSERT INTO specific_documentation (specific_documentation_id, student_id, doc_type) VALUES (?, ?, ?)",
+		lastID, sd.StudentID, sd.DocType,
 	)
 
 	// Error message if ExecContext fails
@@ -240,26 +254,33 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
+		return
+	}
+
 	// Writes JSON response & sends a HTTP 201 response code
 	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{
-		"message":     "Specific documentation created successfully",
-		"activity_id": lastID,
+		"message":                   "Specific documentation created successfully",
+		"specific_documentation_id": lastID,
 	})
 }
 
 func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["activity_id"]
+	idStr, ok := vars["specific_documentation_id"]
 	if !ok {
-		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
+		utils.WriteError(w, http.StatusBadRequest, "Missing specific documentation ID")
 		return
 	}
 
-	// Converts the "activity_id" string to an integer
-	activityID, err := strconv.Atoi(idStr)
+	// Converts the "specific_documentation_id" string to an integer
+	specificDocumentationID, err := strconv.Atoi(idStr)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
+		utils.WriteError(w, http.StatusBadRequest, "Invalid specific documentation ID")
 		log.Println("Invalid ID parse error:", err)
 		return
 	}
@@ -276,16 +297,28 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Automatically set activity_datetime to now
+	sd.ActivityDateTime = time.Now()
+
 	// Validates required fields
-	if sd.ID == 0 || sd.DocType == "" || sd.Date == "" || sd.Time == "" || len(sd.File) == 0 {
+	if sd.StudentID == 0 || sd.DocType == "" || len(sd.File) == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
 
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
 	// Executes written SQL to update the activity data
-	_, err = db.ExecContext(r.Context(),
-		"UPDATE activity SET date=?, time=? WHERE activity_id=?",
-		sd.Date, sd.Time, activityID,
+	_, err = tx.ExecContext(r.Context(),
+		"UPDATE activity SET activity_datetime=? WHERE activity_id=?",
+		sd.ActivityDateTime, specificDocumentationID,
 	)
 
 	// Error message if ExecContext fails
@@ -296,9 +329,9 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Executes written SQL to update the documentation data
-	_, err = db.ExecContext(r.Context(),
-		"UPDATE documentation SET file=? WHERE activity_id=?",
-		sd.File, activityID,
+	_, err = tx.ExecContext(r.Context(),
+		"UPDATE documentation SET file=? WHERE documentation_id=?",
+		sd.File, specificDocumentationID,
 	)
 
 	// Error message if ExecContext fails
@@ -309,9 +342,9 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Executes written SQL to update the specific documentation data
-	res, err := db.ExecContext(r.Context(),
-		"UPDATE specific_documentation SET doc_type=?, id=? WHERE activity_id=?",
-		sd.DocType, sd.ID, activityID,
+	res, err := tx.ExecContext(r.Context(),
+		"UPDATE specific_documentation SET doc_type=?, student_id=? WHERE specific_documentation_id=?",
+		sd.DocType, sd.StudentID, specificDocumentationID,
 	)
 
 	// Error message if ExecContext fails
@@ -337,6 +370,13 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
+		return
+	}
+
 	// Writes JSON response & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Specific documentation updated successfully",
@@ -346,25 +386,32 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["activity_id"]
+	idStr, ok := vars["specific_documentation_id"]
 	if !ok {
-		utils.WriteError(w, http.StatusBadRequest, "Missing activity ID")
+		utils.WriteError(w, http.StatusBadRequest, "Missing specific documentation ID")
 		return
 	}
 
-	// Converts the "activity_id" string to an integer
-	activityID, err := strconv.Atoi(idStr)
+	// Converts the "specific_documentation_id" string to an integer
+	specificDocumentationID, err := strconv.Atoi(idStr)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid activity ID")
+		utils.WriteError(w, http.StatusBadRequest, "Invalid specific documentation ID")
 		log.Println("Invalid ID parse error:", err)
 		return
 	}
 
-	// Executes SQL to delete from activity (will cascade to documentation and specific_documentation)
-	res, err := db.ExecContext(r.Context(),
-		"DELETE FROM activity WHERE activity_id=?",
-		activityID,
-	)
+	// Start transaction
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
+	// Executes written SQL to delete the specific documentation
+	res, err := tx.ExecContext(r.Context(),
+		"DELETE FROM specific_documentation WHERE specific_documentation_id = ?", specificDocumentationID)
 
 	// Error message if ExecContext fails
 	if err != nil {
@@ -375,6 +422,8 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Gets the number of rows affected by the delete
 	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
 		log.Println("RowsAffected error:", err)
@@ -384,6 +433,67 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	// Error message if no rows were deleted
 	if rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "Specific documentation not found")
+		return
+	}
+
+	// Executes written SQL to delete the documentation
+	res, err = tx.ExecContext(r.Context(),
+		"DELETE FROM documentation WHERE documentation_id = ?", specificDocumentationID)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete documentation")
+		log.Println("DB delete error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err = res.RowsAffected()
+
+	// Error message if RowsAffected fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Documentation not found")
+		return
+	}
+
+	// Executes written SQL to delete the activity
+	res, err = tx.ExecContext(r.Context(),
+		"DELETE FROM activity WHERE activity_id = ?", specificDocumentationID)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete activity")
+		log.Println("DB delete activity error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err = res.RowsAffected()
+
+	// Error message if RowsAffected fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "Activity not found")
+		return
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
 		return
 	}
 

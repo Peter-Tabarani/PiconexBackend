@@ -69,7 +69,7 @@ func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Converts the "id" string to an integer
+	// Converts the "accommodation_id" string to an integer
 	accommodationID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid accommodation ID")
@@ -108,15 +108,21 @@ func GetAccommodationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extends the struct to have an extra boolean
+	type AccommodationWithBoolean struct {
+		models.Accommodation
+		HasAccommodation bool `json:"hasAccommodation"`
+	}
+
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
-	idStr, ok := vars["id"]
+	idStr, ok := vars["student_id"]
 	if !ok {
 		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
 		return
 	}
 
-	// Converts the "id" string to an integer
+	// Converts the "student_id" string to an integer
 	studentID, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
@@ -126,10 +132,15 @@ func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Req
 
 	// All data being selected for this GET command
 	query := `
-		SELECT a.accommodation_id, a.name, a.description
-		FROM stu_accom sa
-		JOIN accommodation a ON sa.accommodation_id = a.accommodation_id
-		WHERE sa.id = ?
+		SELECT 
+			a.accommodation_id,
+			a.name,
+			a.description,
+			CASE WHEN sa.student_id IS NULL THEN FALSE ELSE TRUE END AS has_accommodation
+		FROM accommodation a
+		LEFT JOIN stu_accom sa
+			ON a.accommodation_id = sa.accommodation_id
+			AND sa.student_id = ?
 	`
 
 	// Executes written SQL
@@ -144,13 +155,13 @@ func GetAccommodationsByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	defer rows.Close()
 
 	// Creates an empty slice to obtain results
-	accommodations := make([]models.Accommodation, 0)
+	accommodations := make([]AccommodationWithBoolean, 0)
 
 	// Reads each row returned by the database
 	for rows.Next() {
-		var a models.Accommodation
+		var a AccommodationWithBoolean
 		// Parses the current data into fields of "a" variable
-		if err := rows.Scan(&a.AccommodationID, &a.Name, &a.Description); err != nil {
+		if err := rows.Scan(&a.AccommodationID, &a.Name, &a.Description, &a.HasAccommodation); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse accommodations")
 			log.Println("Row scan error:", err)
 			return
