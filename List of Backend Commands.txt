@@ -55,9 +55,10 @@ PointOfContact[] getFuturePointsOfContactByStudentIDAndAdminID(student_id: numbe
 {Accommodation, hasAccommodation: boolean}[] getAccommodationsByStudentID(student_id: number)
 
 NEED TO ADD
-{Activity, name: string} getIncomingActivity(admin_id: number)
 PersonalDocumentation[] getPersonalDocumentationByAdminID(admin_id: number)
 PointOfContact[] getPointsOfContactByStudentID(student_id: number)
+
+{Activity, name: string} getIncomingActivity(admin_id: number)
 
 // PointOfContact formatter. The handler needs to pull the Student data along with the PointOfContact. New route?
 {activity_id: number, name: string, event_datetime: Date} getPointsOfContactSummaryByAdminIDAndDate(admin_id: number, date: Date)
