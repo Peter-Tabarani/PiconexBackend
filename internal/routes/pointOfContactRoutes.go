@@ -114,6 +114,20 @@ func RegisterPointOfContactRoutes(router *mux.Router, db *sql.DB) {
 	).Methods("GET", "OPTIONS")
 
 	pocRouter.Handle(
+		"/student/{student_id}",
+		utils.RollMiddleware(map[string][]string{
+			"GET": {"admin"}, // Admins can fetch all PoCs for a student
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				handlers.GetPointsOfContactByStudentID(db, w, r)
+			default:
+				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+			}
+		})),
+	).Methods("GET", "OPTIONS")
+
+	pocRouter.Handle(
 		"/future/student/{student_id}/admin/{admin_id}",
 		utils.RollMiddleware(map[string][]string{
 			"GET": {"admin"},
