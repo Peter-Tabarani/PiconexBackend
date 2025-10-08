@@ -110,6 +110,63 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	utils.WriteJSON(w, http.StatusOK, pd)
 }
 
+func GetPersonalDocumentationByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
+	idStr, ok := vars["admin_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID")
+		return
+	}
+
+	// Converts the "personal_documentation_id" string to an integer
+	adminID, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// SQL query to select a single personal_documentation
+	query := `
+		SELECT pd.personal_documentation_id, pd.admin_id, a.activity_datetime, d.file
+		FROM personal_documentation pd
+		JOIN activity a ON pd.personal_documentation_id = a.activity_id
+		JOIN documentation d ON pd.personal_documentation_id = d.documentation_id
+		WHERE pd.admin_id = ?
+	`
+
+	// Executes query
+	rows, err := db.QueryContext(r.Context(), query, adminID)
+	defer rows.Close()
+
+	personalDocumentations := make([]models.PersonalDocumentation, 0)
+
+	for rows.Next() {
+		var pd models.PersonalDocumentation
+		if err := rows.Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan personal documentation")
+			log.Println("Row scan error:", err)
+			return
+		}
+		personalDocumentations = append(personalDocumentations, pd)
+	}
+
+	// Error message if no rows are found
+	if err == sql.ErrNoRows {
+		utils.WriteError(w, http.StatusNotFound, "Personal documentation not found")
+		return
+		// Error message if QueryRowContext or scan fails
+	} else if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch personal documentation")
+		log.Println("DB query error:", err)
+		return
+	}
+
+	// Writes JSON response & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, personalDocumentations)
+}
+
 func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Empty variable for personal_documentation struct
 	var pd models.PersonalDocumentation
