@@ -382,6 +382,83 @@ func GetPastPointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWrit
 	utils.WriteJSON(w, http.StatusOK, pointsOfContact)
 }
 
+func GetPointsOfContactByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
+	studentIDStr, ok := vars["student_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
+		return
+	}
+
+	// Converts the "student_id" string to an integer
+	studentID, err := strconv.Atoi(studentIDStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+		log.Println("Invalid student ID parse error:", err)
+		return
+	}
+
+	// Query: join point_of_contact -> activity -> poc_adm
+	query := `
+		SELECT
+			poc.point_of_contact_id,
+			a.activity_datetime,
+			poc.event_datetime,
+			poc.duration,
+			poc.event_type,
+			poc.student_id
+		FROM point_of_contact poc
+		JOIN activity a ON poc.point_of_contact_id = a.activity_id
+		WHERE poc.student_id = ?
+	`
+
+	// Executes written SQL
+	rows, err := db.QueryContext(r.Context(), query, studentID)
+
+	// Error message if QueryContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain future points of contact")
+		log.Println("DB query error:", err)
+		return
+	}
+	defer rows.Close()
+
+	// Creates an empty slice to obtain results
+	pointsOfContact := make([]models.PointOfContact, 0)
+
+	// Reads each row returned by the database
+	for rows.Next() {
+		var poc models.PointOfContact
+		// Parses the current data into fields of "poc" variable
+		if err := rows.Scan(
+			&poc.PointOfContactID,
+			&poc.ActivityDateTime,
+			&poc.EventDateTime,
+			&poc.Duration,
+			&poc.EventType,
+			&poc.StudentID,
+		); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse points of contact")
+			log.Println("Row scan error:", err)
+			return
+		}
+
+		// Adds the obtained data to the slice
+		pointsOfContact = append(pointsOfContact, poc)
+	}
+
+	// Checks for errors during iteration
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
+		log.Println("Rows error:", err)
+		return
+	}
+
+	// Writes the slice as JSON & sends a HTTP 200 response code
+	utils.WriteJSON(w, http.StatusOK, pointsOfContact)
+}
+
 func GetFuturePointsOfContactByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
