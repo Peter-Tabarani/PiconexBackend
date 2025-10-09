@@ -59,7 +59,7 @@ PersonalDocumentation[] getPersonalDocumentationByAdminID(admin_id: number)
 PointOfContact[] getPointsOfContactByStudentID(student_id: number)
 
 **DASHBOARD**
-{Activity, name: string} getIncomingActivity(admin_id: number) // Pulls all information 
+{activity_id, summary: string, datetime: Date} getActivitiesSummary()
 // PointOfContact formatter. The handler needs to pull the Student data along with the PointOfContact. New route?
 {point_of_contact_id: number, name: string, event_datetime: Date} getPointsOfContactSummaryByAdminIDAndDate(admin_id: number, date: Date)
 

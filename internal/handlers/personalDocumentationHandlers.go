@@ -138,28 +138,35 @@ func GetPersonalDocumentationByAdminID(db *sql.DB, w http.ResponseWriter, r *htt
 
 	// Executes query
 	rows, err := db.QueryContext(r.Context(), query, adminID)
-	defer rows.Close()
 
+	// Creates an empty slice to obtain results
 	personalDocumentations := make([]models.PersonalDocumentation, 0)
 
+	// Error message if QueryContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain personal documentation")
+		log.Println("DB query error:", err)
+		return
+	}
+	defer rows.Close()
+
+	// Reads each row returned by the database
 	for rows.Next() {
 		var pd models.PersonalDocumentation
+		// Parses the current data into fields of "a" variable
 		if err := rows.Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan personal documentation")
 			log.Println("Row scan error:", err)
 			return
 		}
+		// Adds the obtained data to the slice
 		personalDocumentations = append(personalDocumentations, pd)
 	}
 
-	// Error message if no rows are found
-	if err == sql.ErrNoRows {
-		utils.WriteError(w, http.StatusNotFound, "Personal documentation not found")
-		return
-		// Error message if QueryRowContext or scan fails
-	} else if err != nil {
+	// Checks for errors during iteration
+	if err := rows.Err(); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch personal documentation")
-		log.Println("DB query error:", err)
+		log.Println("Rows error:", err)
 		return
 	}
 
