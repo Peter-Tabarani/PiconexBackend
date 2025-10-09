@@ -57,7 +57,9 @@ func RegisterPersonalDocumentationRoutes(router *mux.Router, db *sql.DB) {
 			}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch r.Method {
 				case http.MethodDelete:
-					handlers.DeletePersonalDocumentationByAdminID(db, w, r)
+					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+
+					//handlers.DeletePersonalDocumentationByAdminID(db, w, r)
 				default:
 					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 				}

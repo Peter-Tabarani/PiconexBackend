@@ -58,14 +58,12 @@ NEED TO ADD
 PersonalDocumentation[] getPersonalDocumentationByAdminID(admin_id: number)
 PointOfContact[] getPointsOfContactByStudentID(student_id: number)
 
-{Activity, name: string} getIncomingActivity(admin_id: number)
-
+**DASHBOARD**
+{Activity, name: string} getIncomingActivity(admin_id: number) // Pulls all information 
 // PointOfContact formatter. The handler needs to pull the Student data along with the PointOfContact. New route?
-{activity_id: number, name: string, event_datetime: Date} getPointsOfContactSummaryByAdminIDAndDate(admin_id: number, date: Date)
+{point_of_contact_id: number, name: string, event_datetime: Date} getPointsOfContactSummaryByAdminIDAndDate(admin_id: number, date: Date)
 
-// ActivitiesSummaryByDate formatter. The handler needs to pull the respective other data. Definitely new route
-{activity_id: number, summary: string, datetime: Date} getActivitiesSummaryByDate(date: Date)
-
+**STUDENT INFO**
 // ActivitiesSummaryByStudent formatter. The handler needs to pull the respective other data. Definitely new route
 {activity_id: number, summary: string, datetime: Date} getActivitiesSummaryByStudentID(student_id: number)
 
@@ -94,6 +92,10 @@ DeletePocAdminByAdminID(admin_id: number)
 DeletePinnedByAdminID(admin_id: number)
 DeleteStuDisByStudentID(student_id: number)
 DeleteStuAccomByStudentID(student_id: number)
+DeletePocAdminByPointOfContactID(point_of_contact_id: number) // NEED TO DO
+DeletePinnedByStudentID(student_id: number) // NEED TO DO
+DeleteStuDisByDisabilityID(disability_id: number) // NEED TO DO
+DeleteStuAccomByAccommodationID(accommodation_id: number) // NEED TO DO
 
 **UPDATE COMMANDS**
 UpdateStudent(student_id: number)

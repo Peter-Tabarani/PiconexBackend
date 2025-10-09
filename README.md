@@ -34,10 +34,10 @@ curl -X POST http://localhost:8080/point-of-contact \
  -H "Content-Type: application/json" \
  -H "Authorization: Bearer superkey" \
  -d '{
-"event_datetime": "2025-09-22T13:30:00Z",
+"event_datetime": "2025-10-07T13:30:00Z",
 "duration": 30,
 "event_type": "trad",
-"id": 15
+"student_id": 15
 }'
 
 curl -X GET http://localhost:8080/admin/128 \
