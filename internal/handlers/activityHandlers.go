@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
@@ -164,19 +164,74 @@ func GetActivitiesByDate(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, activities)
 }
 
-type ActivitySummary struct {
-	ActivityID       int       `json:"activity_id"`
-	Summary          string    `json:"summary"`
-	ActivityDateTime time.Time `json:"datetime"`
-}
-
 func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// --- Step 1: Fetch all activities that occurred on this date ---
+	dateStr := r.URL.Query().Get("date")
+	tzStr := r.URL.Query().Get("tz")
+	studentIDStr := r.URL.Query().Get("student_id")
+	adminIDStr := r.URL.Query().Get("admin_id")
+
+	loc := time.UTC
+	if tzStr != "" {
+		var err error
+		loc, err = time.LoadLocation(tzStr)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Invalid timezone")
+			return
+		}
+	}
+
+	// --- Base activity query ---
 	query := `
 		SELECT activity_id, activity_datetime
 		FROM activity
 	`
-	rows, err := db.QueryContext(r.Context(), query)
+	args := []any{}
+	where := []string{}
+
+	// --- Optional date filter ---
+	if dateStr != "" {
+		targetDate, err := time.ParseInLocation("2006-01-02", dateStr, loc)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Invalid date format (expected YYYY-MM-DD)")
+			return
+		}
+		start := targetDate
+		end := targetDate.Add(24 * time.Hour)
+		where = append(where, "activity_datetime >= ? AND activity_datetime < ?")
+		args = append(args, start.UTC(), end.UTC())
+	}
+
+	// --- Optional student filter ---
+	if studentIDStr != "" {
+		where = append(where, `
+        activity_id IN (
+            SELECT point_of_contact_id FROM point_of_contact WHERE student_id = ?
+            UNION
+            SELECT specific_documentation_id FROM specific_documentation WHERE student_id = ?
+        )
+    `)
+		args = append(args, studentIDStr, studentIDStr)
+	}
+
+	// --- Optional admin filter ---
+	if adminIDStr != "" {
+		where = append(where, `
+        activity_id IN (
+            SELECT poc.point_of_contact_id
+            FROM point_of_contact poc
+            INNER JOIN poc_admin pa ON pa.point_of_contact_id = poc.point_of_contact_id
+            WHERE pa.admin_id = ?
+        )
+    `)
+		args = append(args, adminIDStr)
+	}
+
+	if len(where) > 0 {
+		query += " WHERE " + strings.Join(where, " AND ")
+	}
+	query += " ORDER BY activity_datetime DESC"
+
+	rows, err := db.QueryContext(r.Context(), query, args...)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to query activities")
 		log.Println("DB query error:", err)
@@ -184,147 +239,113 @@ func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	log.Println(rows)
+	type Person struct {
+		ID            int    `json:"id"`
+		FirstName     string `json:"first_name"`
+		PreferredName string `json:"preferred_name"`
+	}
 
-	activities := make([]models.Activity, 0)
+	type ActivityData struct {
+		ActivityID       int        `json:"activity_id"`
+		Type             string     `json:"type"`
+		Student          Person     `json:"student"`
+		Admins           []Person   `json:"admins,omitempty"`
+		DocType          *string    `json:"doc_type,omitempty"`
+		FileName         *string    `json:"file_name,omitempty"`
+		ActivityDateTime time.Time  `json:"activity_datetime"`
+		EventDateTime    *time.Time `json:"event_datetime,omitempty"`
+	}
+
+	activities := []ActivityData{}
+
 	for rows.Next() {
-		var a models.Activity
+		var a ActivityData
 		if err := rows.Scan(&a.ActivityID, &a.ActivityDateTime); err != nil {
-			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse activity rows")
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse activities")
 			log.Println("Row scan error:", err)
 			return
 		}
-		activities = append(activities, a)
-	}
-	if err := rows.Err(); err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Operational error")
-		log.Println("Rows error:", err)
-		return
-	}
 
-	// --- Step 2: For each activity, check its type and build a summary ---
-	summaries := make([]ActivitySummary, 0)
-
-	for _, a := range activities {
-		// --- CASE 1: Point of Contact (meeting) ---
-		var poc models.PointOfContact
-		err := db.QueryRowContext(r.Context(), `
+		// --- CASE 1: Point of Contact ---
+		var poc struct {
+			PointOfContactID int
+			StudentID        int
+			EventDateTime    time.Time
+		}
+		err = db.QueryRowContext(r.Context(), `
 			SELECT point_of_contact_id, student_id, event_datetime
 			FROM point_of_contact
 			WHERE point_of_contact_id = ?
 		`, a.ActivityID).Scan(&poc.PointOfContactID, &poc.StudentID, &poc.EventDateTime)
 
 		if err == nil {
-			// Find student
-			var student models.Student
-			err = db.QueryRowContext(r.Context(), `
-				SELECT first_name, preferred_name
+			// Student
+			var student Person
+			db.QueryRowContext(r.Context(), `
+				SELECT person_id, first_name, preferred_name
 				FROM person
 				WHERE person_id = ?
-			`, poc.StudentID).Scan(&student.FirstName, &student.PreferredName)
-			if err != nil && err != sql.ErrNoRows {
-				log.Println("Student lookup error:", err)
-				continue
-			}
-			studentName := student.PreferredName
-			if studentName == "" {
-				studentName = student.FirstName
-			}
-			if studentName == "" {
-				studentName = "Student"
-			}
+			`, poc.StudentID).Scan(&student.ID, &student.FirstName, &student.PreferredName)
 
-			// Find linked admins
-			adminRows, err := db.QueryContext(r.Context(), `
-				SELECT p.first_name, p.preferred_name
+			// Admins
+			adminRows, _ := db.QueryContext(r.Context(), `
+				SELECT p.person_id, p.first_name, p.preferred_name
 				FROM admin a
 				INNER JOIN person p ON a.admin_id = p.person_id
 				INNER JOIN poc_admin pa ON pa.admin_id = a.admin_id
 				WHERE pa.point_of_contact_id = ?
 			`, poc.PointOfContactID)
-			if err != nil {
-				log.Println("Admin join error:", err)
-				continue
-			}
 
-			adminNames := ""
+			admins := []Person{}
 			for adminRows.Next() {
-				var firstName, preferredName sql.NullString
-				adminRows.Scan(&firstName, &preferredName)
-				name := preferredName.String
-				if name == "" {
-					name = firstName.String
-				}
-				if name != "" {
-					if adminNames != "" {
-						adminNames += ", "
-					}
-					adminNames += name
-				}
+				var adm Person
+				adminRows.Scan(&adm.ID, &adm.FirstName, &adm.PreferredName)
+				admins = append(admins, adm)
 			}
 			adminRows.Close()
-			if adminNames == "" {
-				adminNames = "an administrator"
-			}
 
-			// Format readable summary
-			summary := fmt.Sprintf(
-				"%s scheduled a meeting with %s on %s at %s",
-				studentName,
-				adminNames,
-				poc.EventDateTime.Format("1/2/2006"),
-				poc.EventDateTime.Format("3:04 PM"),
-			)
-			summaries = append(summaries, ActivitySummary{
-				ActivityID:       a.ActivityID,
-				Summary:          summary,
-				ActivityDateTime: a.ActivityDateTime,
-			})
+			a.Type = "point_of_contact"
+			a.Student = student
+			a.Admins = admins
+			a.EventDateTime = &poc.EventDateTime
+			activities = append(activities, a)
 			continue
 		}
 
-		// --- CASE 2: Specific Documentation (upload) ---
-		var doc models.SpecificDocumentation
+		// --- CASE 2: Specific Documentation ---
+		var doc struct {
+			ID        int
+			StudentID int
+			DocType   string
+		}
 		err = db.QueryRowContext(r.Context(), `
 			SELECT specific_documentation_id, student_id, doc_type
 			FROM specific_documentation
 			WHERE specific_documentation_id = ?
-		`, a.ActivityID).Scan(&doc.SpecificDocumentationID, &doc.StudentID, &doc.DocType)
+
+		`, a.ActivityID).Scan(&doc.ID, &doc.StudentID, &doc.DocType)
+
 		if err == nil {
-			var student models.Student
-			err = db.QueryRowContext(r.Context(), `
-				SELECT first_name, preferred_name
+			var student Person
+			db.QueryRowContext(r.Context(), `
+				SELECT person_id, first_name, preferred_name
 				FROM person
 				WHERE person_id = ?
-			`, doc.StudentID).Scan(&student.FirstName, &student.PreferredName)
-			if err != nil && err != sql.ErrNoRows {
-				log.Println("Student lookup error:", err)
-				continue
-			}
-			studentName := student.PreferredName
-			if studentName == "" {
-				studentName = student.FirstName
-			}
-			if studentName == "" {
-				studentName = "Student"
-			}
+			`, doc.StudentID).Scan(&student.ID, &student.FirstName, &student.PreferredName)
 
-			summary := fmt.Sprintf("%s uploaded documentation", studentName)
-			if doc.DocType != "" {
-				summary += fmt.Sprintf(": %s", doc.DocType)
-			}
+			a.Type = "specific_documentation"
+			a.Student = student
+			a.DocType = &doc.DocType
 
-			summaries = append(summaries, ActivitySummary{
-				ActivityID:       a.ActivityID,
-				Summary:          summary,
-				ActivityDateTime: a.ActivityDateTime,
-			})
-			continue
+			activities = append(activities, a)
 		}
 	}
 
-	// --- Step 3: Sort summaries by time descending (optional, usually done in SQL) ---
-	// In this handler, we’ll just return as-is for simplicity
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Operational error")
+		log.Println("Rows error:", err)
+		return
+	}
 
-	utils.WriteJSON(w, http.StatusOK, summaries)
+	utils.WriteJSON(w, http.StatusOK, activities)
 }

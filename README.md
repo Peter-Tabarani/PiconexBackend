@@ -40,7 +40,7 @@ curl -X POST http://localhost:8080/point-of-contact \
 "student_id": 15
 }'
 
-curl -X GET http://localhost:8080/student \
+curl -X GET http://localhost:8080/specific_documentation \
  -H "Authorization: Bearer superkey"
 
 curl -X GET http://localhost:8080/personal-documentation \

@@ -17,6 +17,7 @@ Person[] getPeople()
 Admin[] getAdmins()
 Students[] getStudents()
 Activity[] getActivity()
+ActivityData[] getActivitiesSummary(date?: Date, tz?: string, student_id?: number, admin_id?: number)
 Documentation[] getDocumentation()
 PersonalDocumentation[] getPersonalDocumentation()
 SpecificDocumentation[] getSpecificDocumentation()
@@ -58,14 +59,7 @@ NEED TO ADD
 PersonalDocumentation[] getPersonalDocumentationByAdminID(admin_id: number)
 PointOfContact[] getPointsOfContactByStudentID(student_id: number)
 
-**DASHBOARD**
-{activity_id, summary: string, datetime: Date} getActivitiesSummary()
-// PointOfContact formatter. The handler needs to pull the Student data along with the PointOfContact. New route?
-{point_of_contact_id: number, name: string, event_datetime: Date} getPointsOfContactSummaryByAdminIDAndDate(admin_id: number, date: Date)
-
-**STUDENT INFO**
-// ActivitiesSummaryByStudent formatter. The handler needs to pull the respective other data. Definitely new route
-{activity_id: number, summary: string, datetime: Date} getActivitiesSummaryByStudentID(student_id: number)
+PointOfContactData[] getPointsOfContactSummary(date?: Date, tz?: string, student_id?: number, admin_id?: number)
 
 **CREATE COMMANDS**
 CreateStudent(student_id: number)
