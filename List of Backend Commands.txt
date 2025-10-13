@@ -5,23 +5,28 @@ returnType commandName(parameters: parameterTypes)
 
 When structuring the routes, I would use something like this:
 
-[PointofContact, Student][] getAppointmentsbyAdminIDandDate(admin_id: number, date: Date)
+ActivityData[] getActivitiesSummary(date?: Date, tz?: string, student_id?: number, admin_id?: number)
 would be
-/appointments/admin/{admin_id}/date/{date}
-
+/activity/summary?date=?&tz=?&student_id=?&admin_id=?
 
 **GET COMMANDS**
 
 BULK COMMANDS
 Person[] getPeople()
 Admin[] getAdmins()
-Students[] getStudents()
-Activity[] getActivity()
+Students[] getStudents() // COMBINE 1
+Student[] getStudentsByName(name: string) // COMBINE 2
+Activity[] getActivities() // COMBINE 1
+Activity[] getActivitiesByDate(date: Date) // COMBINE 2
 ActivityData[] getActivitiesSummary(date?: Date, tz?: string, student_id?: number, admin_id?: number)
 Documentation[] getDocumentation()
-PersonalDocumentation[] getPersonalDocumentation()
-SpecificDocumentation[] getSpecificDocumentation()
-PointofContact[] getPointsofContact()
+PersonalDocumentation[] getPersonalDocumentation() // COMBINE 1
+PersonalDocumentation[] getPersonalDocumentationByAdminID(admin_id: number) // COMBINE 2
+SpecificDocumentation[] getSpecificDocumentation() // COMBINE 1
+SpecificDocumentation[] getSpecificDocumentationByStudentID(student_id: number) // COMBINE 2
+PointofContact[] getPointsofContact() // COMBINE 1
+PointOfContact[] getPointsOfContactByStudentID(student_id: number) // COMBINE 2
+PointOfContact[] getPointsOfContactByAdminIDAndDate(admin_id: number, date: Date) // COMBINE 3
 Disability[] getDisabilities()
 Accommodation[] getAccommodations()
 
@@ -44,20 +49,12 @@ Accommodation getAccommodationByID(accommodation_id: number)
 
 MISCELLANEOUS
 Student[] getPinnedByAdminID(admin_id: number)
-Student[] getStudentsByName(name: string)
-Activity[] getActivitiesByDate(date: Date)
-SpecificDocumentation[] getSpecificDocumentationByStudentID(student_id: number)
-PointOfContact[] getPointsOfContactByAdminIDAndDate(admin_id: number, date: Date)
-PointOfContact[] getFuturePointsOfContactByAdminID(admin_id: number)
-PointOfContact[] getPastPointsOfContactByStudentIDAndAdminID(student_id: number, admin_id: number)
-PointOfContact[] getFuturePointsOfContactByStudentID(student_id: number)
-PointOfContact[] getFuturePointsOfContactByStudentIDAndAdminID(student_id: number, admin_id: number)
+PointOfContact[] getFuturePointsOfContactByAdminID(admin_id: number) // COMBINE 1
+PointOfContact[] getFuturePointsOfContactByStudentID(student_id: number) // COMBINE 2
+PointOfContact[] getFuturePointsOfContactByStudentIDAndAdminID(student_id: number, admin_id: number) // COMBINE 3
+PointOfContact[] getPastPointsOfContactByStudentIDAndAdminID(student_id: number, admin_id: number) // COMBINE AND ADD OPTIONAL PARAMETERS
 {Disability, hasDisability: boolean}[] getDisabilitiesByStudentID(student_id: number)
 {Accommodation, hasAccommodation: boolean}[] getAccommodationsByStudentID(student_id: number)
-
-NEED TO ADD
-PersonalDocumentation[] getPersonalDocumentationByAdminID(admin_id: number)
-PointOfContact[] getPointsOfContactByStudentID(student_id: number)
 
 **CREATE COMMANDS**
 CreateStudent(student_id: number)
