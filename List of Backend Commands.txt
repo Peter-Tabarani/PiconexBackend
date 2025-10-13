@@ -59,8 +59,6 @@ NEED TO ADD
 PersonalDocumentation[] getPersonalDocumentationByAdminID(admin_id: number)
 PointOfContact[] getPointsOfContactByStudentID(student_id: number)
 
-PointOfContactData[] getPointsOfContactSummary(date?: Date, tz?: string, student_id?: number, admin_id?: number)
-
 **CREATE COMMANDS**
 CreateStudent(student_id: number)
 CreateAdmin(admin_id: number)
@@ -78,6 +76,10 @@ DeleteDisability(disability_id: number)
 DeleteSpecificDocumentation(specific_documentation_id: number)
 DeletePersonalDocumentation(personal_documentation_id: number)
 DeletePointOfContact(point_of_contact_id: number)
+DeletePinned(student_id: number, admin_id: number)
+DeleteStuDis(student_id: number, disability_id: number)
+DeleteStuAccom(student_id: number, accommodation_id: number)
+DeletePocAdmin(point_of_contact_id: number, admin_id: number)
 
 DeletePersonalDocumentationByAdminID(admin_id: number) // NEED TO DO
 DeleteSpecificDocumentationByStudentID(student_id: number) // NEED TO DO
