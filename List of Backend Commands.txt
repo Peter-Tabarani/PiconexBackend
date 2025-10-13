@@ -14,19 +14,16 @@ would be
 BULK COMMANDS
 Person[] getPeople()
 Admin[] getAdmins()
-Students[] getStudents() // COMBINE 1
+Student[] getStudents() // COMBINE 1
 Student[] getStudentsByName(name: string) // COMBINE 2
-Activity[] getActivities() // COMBINE 1
-Activity[] getActivitiesByDate(date: Date) // COMBINE 2
+Activity[] getActivities()
 ActivityData[] getActivitiesSummary(date?: Date, tz?: string, student_id?: number, admin_id?: number)
 Documentation[] getDocumentation()
 PersonalDocumentation[] getPersonalDocumentation() // COMBINE 1
 PersonalDocumentation[] getPersonalDocumentationByAdminID(admin_id: number) // COMBINE 2
 SpecificDocumentation[] getSpecificDocumentation() // COMBINE 1
 SpecificDocumentation[] getSpecificDocumentationByStudentID(student_id: number) // COMBINE 2
-PointofContact[] getPointsofContact() // COMBINE 1
-PointOfContact[] getPointsOfContactByStudentID(student_id: number) // COMBINE 2
-PointOfContact[] getPointsOfContactByAdminIDAndDate(admin_id: number, date: Date) // COMBINE 3
+PointofContact[] getPointsofContact()
 Disability[] getDisabilities()
 Accommodation[] getAccommodations()
 

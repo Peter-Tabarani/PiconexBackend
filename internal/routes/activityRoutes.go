@@ -40,19 +40,6 @@ func RegisterActivityRoutes(router *mux.Router, db *sql.DB) {
 		})),
 	).Methods("GET", "OPTIONS")
 
-	activityRouter.Handle("/date/{date}",
-		utils.RollMiddleware(map[string][]string{
-			"GET": {"admin"},
-		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				handlers.GetActivitiesByDate(db, w, r)
-			default:
-				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			}
-		})),
-	).Methods("GET", "OPTIONS")
-
 	activityRouter.Handle("/{activity_id}",
 		utils.RollMiddleware(map[string][]string{
 			"GET": {"admin"},
