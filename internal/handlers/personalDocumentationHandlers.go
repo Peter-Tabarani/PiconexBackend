@@ -153,7 +153,7 @@ func GetPersonalDocumentationByAdminID(db *sql.DB, w http.ResponseWriter, r *htt
 	// Reads each row returned by the database
 	for rows.Next() {
 		var pd models.PersonalDocumentation
-		// Parses the current data into fields of "a" variable
+		// Parses the current data into fields of "pd" variable
 		if err := rows.Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan personal documentation")
 			log.Println("Row scan error:", err)

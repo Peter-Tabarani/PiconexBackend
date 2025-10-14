@@ -138,8 +138,11 @@ func GetSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *h
 		WHERE sd.student_id = ?
 	`
 
-	// Executes written SQL
+	// Executes query
 	rows, err := db.QueryContext(r.Context(), query, studentID)
+
+	// Creates an empty slice to obtain results
+	specificDocumentation := make([]models.SpecificDocumentation, 0)
 
 	// Error message if QueryContext fails
 	if err != nil {
@@ -148,9 +151,6 @@ func GetSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *h
 		return
 	}
 	defer rows.Close()
-
-	// Creates an empty slice to obtain results
-	specificDocumentation := make([]models.SpecificDocumentation, 0)
 
 	// Reads each row returned by the database
 	for rows.Next() {
@@ -167,7 +167,7 @@ func GetSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *h
 
 	// Checks for errors during iteration such as network interruptions and driver errors
 	if err := rows.Err(); err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch specific documentation")
 		log.Println("Rows error:", err)
 		return
 	}
