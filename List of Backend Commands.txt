@@ -55,6 +55,15 @@ CreateSpecificDocumentation(specific_documentation_id: number)
 CreatePersonalDocumentation(personal_documentation_id: number)
 CreatePointOfContact(point_of_contact_id: number)
 
+**UPDATE COMMANDS**
+UpdateStudent(student_id: number)
+UpdateAdmin(admin_id: number)
+UpdateAccommodation(accommodation_id: number)
+UpdateDisability(disability_id: number)
+UpdateSpecificDocumentation(specific_documentation_id: number)
+UpdatePersonalDocumentation(personal_documentation_id: number)
+UpdatePointOfContact(point_of_contact_id: number)
+
 **DELETE COMMANDS**
 DeleteStudent(student_id: number)
 DeleteAdmin(admin_id: number)
@@ -79,12 +88,3 @@ DeleteStuDisByStudentID(student_id: number)
 DeleteStuDisByDisabilityID(disability_id: number) // NEED TO DO
 DeleteStuAccomByStudentID(student_id: number)
 DeleteStuAccomByAccommodationID(accommodation_id: number) // NEED TO DO
-
-**UPDATE COMMANDS**
-UpdateStudent(student_id: number)
-UpdateAdmin(admin_id: number)
-UpdateAccommodation(accommodation_id: number)
-UpdateDisability(disability_id: number)
-UpdateSpecificDocumentation(specific_documentation_id: number)
-UpdatePersonalDocumentation(personal_documentation_id: number)
-UpdatePointOfContact(point_of_contact_id: number)
