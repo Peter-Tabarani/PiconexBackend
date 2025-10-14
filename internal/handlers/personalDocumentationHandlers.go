@@ -16,7 +16,10 @@ import (
 )
 
 func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// All data being selected for this GET command
+	// Extracts optional query parameter from the request
+	adminIDStr := r.URL.Query().Get("admin_id")
+
+	// Base SQL query for retrieving personal documentation
 	query := `
 		SELECT
 			pd.personal_documentation_id, pd.admin_id, a.activity_datetime, d.file
@@ -25,9 +28,23 @@ func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 		JOIN documentation d ON pd.personal_documentation_id = d.documentation_id
 	`
 
-	// Executes written SQL
-	rows, err := db.QueryContext(r.Context(), query)
+	args := []any{}
 
+	// Optional filter by admin_id
+	if adminIDStr != "" {
+		// Converts the "admin_id" string to an integer
+		adminID, err := strconv.Atoi(adminIDStr)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
+			log.Println("Invalid ID parse error:", err)
+			return
+		}
+		query += " WHERE pd.admin_id = ?"
+		args = append(args, adminID)
+	}
+
+	// Executes written SQL
+	rows, err := db.QueryContext(r.Context(), query, args...)
 	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain personal documentation")
@@ -42,7 +59,7 @@ func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	// Reads each row returned by the database
 	for rows.Next() {
 		var pd models.PersonalDocumentation
-		// Parses the current data into fields of "a" variable
+		// Parses the current data into fields of "pd" variable
 		if err := rows.Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan personal documentation")
 			log.Println("Row scan error:", err)
@@ -108,70 +125,6 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 
 	// Writes JSON response & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, pd)
-}
-
-func GetPersonalDocumentationByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Extracts path variables from the request
-	vars := mux.Vars(r)
-	idStr, ok := vars["admin_id"]
-	if !ok {
-		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID")
-		return
-	}
-
-	// Converts the "personal_documentation_id" string to an integer
-	adminID, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
-		log.Println("Invalid ID parse error:", err)
-		return
-	}
-
-	// SQL query to select a single personal_documentation
-	query := `
-		SELECT pd.personal_documentation_id, pd.admin_id, a.activity_datetime, d.file
-		FROM personal_documentation pd
-		JOIN activity a ON pd.personal_documentation_id = a.activity_id
-		JOIN documentation d ON pd.personal_documentation_id = d.documentation_id
-		WHERE pd.admin_id = ?
-	`
-
-	// Executes query
-	rows, err := db.QueryContext(r.Context(), query, adminID)
-
-	// Creates an empty slice to obtain results
-	personalDocumentations := make([]models.PersonalDocumentation, 0)
-
-	// Error message if QueryContext fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain personal documentation")
-		log.Println("DB query error:", err)
-		return
-	}
-	defer rows.Close()
-
-	// Reads each row returned by the database
-	for rows.Next() {
-		var pd models.PersonalDocumentation
-		// Parses the current data into fields of "a" variable
-		if err := rows.Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File); err != nil {
-			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan personal documentation")
-			log.Println("Row scan error:", err)
-			return
-		}
-		// Adds the obtained data to the slice
-		personalDocumentations = append(personalDocumentations, pd)
-	}
-
-	// Checks for errors during iteration
-	if err := rows.Err(); err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch personal documentation")
-		log.Println("Rows error:", err)
-		return
-	}
-
-	// Writes JSON response & sends a HTTP 200 response code
-	utils.WriteJSON(w, http.StatusOK, personalDocumentations)
 }
 
 func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {

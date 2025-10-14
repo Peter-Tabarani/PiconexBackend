@@ -56,16 +56,4 @@ func RegisterSpecificDocumentationRoutes(router *mux.Router, db *sql.DB) {
 			}),
 		)),
 	).Methods("GET", "PUT", "DELETE", "OPTIONS")
-
-	sdRouter.Handle(
-		"/student/{student_id}",
-		utils.RollMiddleware(
-			map[string][]string{
-				"GET": {"student", "admin"},
-			},
-			utils.OwnershipMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				handlers.GetSpecificDocumentationByStudentID(db, w, r)
-			})),
-		),
-	).Methods("GET", "OPTIONS")
 }

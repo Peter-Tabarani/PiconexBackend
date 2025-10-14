@@ -48,17 +48,4 @@ func RegisterStudentRoutes(router *mux.Router, db *sql.DB) {
 				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 			}
 		})))).Methods("GET", "PUT", "DELETE", "OPTIONS")
-
-	studentRouter.Handle("/name/{name}",
-		utils.RollMiddleware(map[string][]string{
-			"GET": {"admin"},
-		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				handlers.GetStudentsByName(db, w, r)
-			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			}
-		})),
-	).Methods("GET", "OPTIONS")
 }

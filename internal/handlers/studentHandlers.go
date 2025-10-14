@@ -16,7 +16,10 @@ import (
 )
 
 func GetStudents(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// All data being selected for this GET command
+	// Extracts optional query parameter from the request
+	nameStr := r.URL.Query().Get("name")
+
+	// Base SQL query for retrieving students
 	query := `
 		SELECT
 			p.person_id, p.first_name, p.preferred_name, p.middle_name, p.last_name,
@@ -27,8 +30,36 @@ func GetStudents(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		JOIN person p ON s.student_id = p.person_id
 	`
 
+	args := []any{}
+
+	// Optional name filter
+	if nameStr != "" {
+		// Splits the name string by spaces
+		words := strings.Fields(nameStr)
+
+		// Builds a condition group for each word and joins them with AND
+		var conditions []string
+		for _, word := range words {
+			word = "%" + strings.ToLower(word) + "%"
+			group := `(
+				LOWER(p.first_name) LIKE ? OR
+				LOWER(p.last_name) LIKE ? OR
+				LOWER(p.preferred_name) LIKE ? OR
+				LOWER(p.middle_name) LIKE ?
+			)`
+			conditions = append(conditions, group)
+			for i := 0; i < 4; i++ {
+				args = append(args, word)
+			}
+		}
+
+		// Combines the conditions with AND
+		whereClause := strings.Join(conditions, " AND ")
+		query += " WHERE " + whereClause
+	}
+
 	// Executes written SQL
-	rows, err := db.QueryContext(r.Context(), query)
+	rows, err := db.QueryContext(r.Context(), query, args...)
 
 	// Error message if QueryContext fails
 	if err != nil {
@@ -142,86 +173,6 @@ func GetStudentByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Writes JSON response & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, s)
-}
-
-func GetStudentsByName(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Extracts path variables from the request
-	vars := mux.Vars(r)
-	raw, ok := vars["name"]
-	if !ok || len(strings.TrimSpace(raw)) == 0 {
-		utils.WriteError(w, http.StatusBadRequest, "Missing or invalid name")
-		return
-	}
-
-	// Split the name by spaces
-	words := strings.Fields(raw)
-
-	// Build a condition group for each word and join them with AND
-	var conditions []string
-	var args []interface{}
-
-	for _, word := range words {
-		word = "%" + strings.ToLower(word) + "%"
-		group := `(
-			LOWER(p.first_name) LIKE ? OR
-			LOWER(p.last_name) LIKE ? OR
-			LOWER(p.preferred_name) LIKE ? OR
-			LOWER(p.middle_name) LIKE ?
-		)`
-		conditions = append(conditions, group)
-		for i := 0; i < 4; i++ {
-			args = append(args, word)
-		}
-	}
-
-	whereClause := strings.Join(conditions, " AND ")
-
-	// SQL query to select students matching the name
-	query := `
-		SELECT
-			s.student_id, p.first_name, p.preferred_name, p.middle_name, p.last_name,
-			p.email, p.phone_number, p.pronouns, p.sex, p.gender, p.birthday,
-			p.address, p.city, p.state, p.zip_code, p.country,
-			s.year, s.start_year, s.planned_grad_year, s.housing, s.dining
-		FROM student s
-		JOIN person p ON s.student_id = p.person_id
-		WHERE ` + whereClause
-
-	// Executes written SQL
-	rows, err := db.QueryContext(r.Context(), query, args...)
-
-	// Error message if QueryContext fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain students")
-		log.Println("DB query error:", err)
-		return
-	}
-	defer rows.Close()
-
-	// Creates an empty slice to obtain results
-	students := make([]models.Student, 0)
-
-	// Reads each row returned by the database
-	for rows.Next() {
-		var s models.Student
-		// Parses the current data into fields of "s" variable
-		if err := rows.Scan(
-			&s.StudentID, &s.FirstName, &s.PreferredName, &s.MiddleName, &s.LastName,
-			&s.Email, &s.PhoneNumber, &s.Pronouns, &s.Sex, &s.Gender,
-			&s.Birthday, &s.Address, &s.City, &s.State, &s.ZipCode, &s.Country,
-			&s.Year, &s.StartYear, &s.PlannedGradYear, &s.Housing, &s.Dining,
-		); err != nil {
-			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan student")
-			log.Println("Row scan error:", err)
-			return
-		}
-
-		// Adds the obtained data to the slice
-		students = append(students, s)
-	}
-
-	// Writes JSON response & sends a HTTP 200 response code
-	utils.WriteJSON(w, http.StatusOK, students)
 }
 
 func CreateStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {

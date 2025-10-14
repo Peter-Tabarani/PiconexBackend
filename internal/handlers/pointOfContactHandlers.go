@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Peter-Tabarani/PiconexBackend/internal/models"
@@ -134,194 +135,28 @@ func GetPointOfContactByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, poc)
 }
 
-func GetFuturePointsOfContactByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Extracts path variables from the request
-	vars := mux.Vars(r)
-	adminIDStr, ok := vars["admin_id"]
-	if !ok {
-		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID")
-		return
-	}
+func GetPastPointsOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extracts optional query parameters from the request
+	studentIDStr := r.URL.Query().Get("student_id")
+	adminIDStr := r.URL.Query().Get("admin_id")
+	tzStr := r.URL.Query().Get("tz")
 
-	// Converts the "admin_id" string to an integer
-	adminID, err := strconv.Atoi(adminIDStr)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
-		log.Println("Invalid admin ID parse error:", err)
-		return
-	}
-
-	currentDate := time.Now().Format("2006-01-02") // MySQL DATE format
-
-	// Query: join point_of_contact -> activity -> poc_adm
-	query := `
-		SELECT
-    		poc.point_of_contact_id,
-    		a.activity_datetime,
-    		poc.event_datetime,
-    		poc.duration,
-    		poc.event_type,
-    		poc.student_id
-		FROM point_of_contact poc
-		JOIN activity a ON poc.point_of_contact_id = a.activity_id
-		JOIN poc_admin pa ON poc.point_of_contact_id = pa.point_of_contact_id
-		WHERE pa.admin_id = ? AND poc.event_datetime > ?
-	`
-
-	// Executes written SQL
-	rows, err := db.QueryContext(r.Context(), query, adminID, currentDate)
-
-	// Error message if QueryContext fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain future points of contact")
-		log.Println("DB query error:", err)
-		return
-	}
-	defer rows.Close()
-
-	// Creates an empty slice to obtain results
-	pointsOfContact := make([]models.PointOfContact, 0)
-
-	// Reads each row returned by the database
-	for rows.Next() {
-		var poc models.PointOfContact
-		// Parses the current data into fields of "poc" variable
-		if err := rows.Scan(
-			&poc.PointOfContactID,
-			&poc.ActivityDateTime,
-			&poc.EventDateTime,
-			&poc.Duration,
-			&poc.EventType,
-			&poc.StudentID,
-		); err != nil {
-			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse points of contact")
-			log.Println("Row scan error:", err)
+	// Loads timezone, defaults to UTC if none provided
+	loc := time.UTC
+	if tzStr != "" {
+		var err error
+		loc, err = time.LoadLocation(tzStr)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Invalid timezone")
+			log.Println("Timezone parse error:", err)
 			return
 		}
-
-		// Adds the obtained data to the slice
-		pointsOfContact = append(pointsOfContact, poc)
 	}
 
-	// Checks for errors during iteration
-	if err := rows.Err(); err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
-		log.Println("Rows error:", err)
-		return
-	}
+	// Sets current date in the specified timezone, formatted for MySQL DATE
+	currentDate := time.Now().In(loc).Format("2006-01-02")
 
-	// Writes the slice as JSON & sends a HTTP 200 response code
-	utils.WriteJSON(w, http.StatusOK, pointsOfContact)
-}
-
-func GetPastPointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Extracts path variables from the request
-	vars := mux.Vars(r)
-	studentIDStr, ok1 := vars["student_id"]
-	adminIDStr, ok2 := vars["admin_id"]
-	if !ok1 || !ok2 {
-		utils.WriteError(w, http.StatusBadRequest, "Missing student ID or admin ID")
-		return
-	}
-
-	// Converts the "student_id" and "admin_id" strings to integers
-	studentID, err := strconv.Atoi(studentIDStr)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
-		log.Println("Invalid student ID parse error:", err)
-		return
-	}
-
-	adminID, err := strconv.Atoi(adminIDStr)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
-		log.Println("Invalid admin ID parse error:", err)
-		return
-	}
-
-	currentDate := time.Now().Format("2006-01-02") // MySQL DATE format
-
-	// Query: join point_of_contact -> activity -> poc_adm
-	query := `
-		SELECT
-    		poc.point_of_contact_id,
-    		a.activity_datetime,
-    		poc.event_datetime,
-    		poc.duration,
-    		poc.event_type,
-    		poc.student_id
-		FROM point_of_contact poc
-		JOIN activity a ON poc.point_of_contact_id = a.activity_id
-		JOIN poc_admin pa ON poc.point_of_contact_id = pa.point_of_contact_id
-		WHERE poc.student_id = ? AND pa.admin_id = ? AND poc.event_datetime < ?
-	`
-
-	// Executes written SQL
-	rows, err := db.QueryContext(r.Context(), query, studentID, adminID, currentDate)
-
-	// Error message if QueryContext fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain future points of contact")
-		log.Println("DB query error:", err)
-		return
-	}
-	defer rows.Close()
-
-	// Creates an empty slice to obtain results
-	pointsOfContact := make([]models.PointOfContact, 0)
-
-	// Reads each row returned by the database
-	for rows.Next() {
-		var poc models.PointOfContact
-		// Parses the current data into fields of "poc" variable
-		if err := rows.Scan(
-			&poc.PointOfContactID,
-			&poc.ActivityDateTime,
-			&poc.EventDateTime,
-			&poc.Duration,
-			&poc.EventType,
-			&poc.StudentID,
-		); err != nil {
-			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse points of contact")
-			log.Println("Row scan error:", err)
-			return
-		}
-
-		// Adds the obtained data to the slice
-		pointsOfContact = append(pointsOfContact, poc)
-	}
-
-	// Checks for errors during iteration
-	if err := rows.Err(); err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
-		log.Println("Rows error:", err)
-		return
-	}
-
-	// Writes the slice as JSON & sends a HTTP 200 response code
-	utils.WriteJSON(w, http.StatusOK, pointsOfContact)
-}
-
-func GetFuturePointsOfContactByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Extracts path variables from the request
-	vars := mux.Vars(r)
-	studentIDStr, ok := vars["student_id"]
-	if !ok {
-		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
-		return
-	}
-
-	// Converts the "student_id" string to an integer
-	studentID, err := strconv.Atoi(studentIDStr)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
-		log.Println("Invalid student ID parse error:", err)
-		return
-	}
-
-	currentDate := time.Now().Format("2006-01-02") // MySQL DATE format
-
-	// Query: join point_of_contact -> activity -> poc_adm
+	// Base SQL query for retrieving future points of contact
 	query := `
 		SELECT
 			poc.point_of_contact_id,
@@ -332,11 +167,46 @@ func GetFuturePointsOfContactByStudentID(db *sql.DB, w http.ResponseWriter, r *h
 			poc.student_id
 		FROM point_of_contact poc
 		JOIN activity a ON poc.point_of_contact_id = a.activity_id
-		WHERE poc.student_id = ? AND poc.event_datetime > ?
 	`
+	args := []any{}
+	where := []string{"poc.event_datetime < ?"}
+	args = append(args, currentDate)
+
+	// Optional student filter
+	if studentIDStr != "" {
+		studentID, err := strconv.Atoi(studentIDStr)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+			log.Println("Invalid student ID parse error:", err)
+			return
+		}
+		where = append(where, "poc.student_id = ?")
+		args = append(args, studentID)
+	}
+
+	// Optional admin filter
+	if adminIDStr != "" {
+		adminID, err := strconv.Atoi(adminIDStr)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
+			log.Println("Invalid admin ID parse error:", err)
+			return
+		}
+		query += `
+			JOIN poc_admin pa ON poc.point_of_contact_id = pa.point_of_contact_id
+		`
+		where = append(where, "pa.admin_id = ?")
+		args = append(args, adminID)
+	}
+
+	// Final query assembly
+	if len(where) > 0 {
+		query += " WHERE " + strings.Join(where, " AND ")
+	}
+	query += " ORDER BY poc.event_datetime ASC"
 
 	// Executes written SQL
-	rows, err := db.QueryContext(r.Context(), query, studentID, currentDate)
+	rows, err := db.QueryContext(r.Context(), query, args...)
 
 	// Error message if QueryContext fails
 	if err != nil {
@@ -365,66 +235,93 @@ func GetFuturePointsOfContactByStudentID(db *sql.DB, w http.ResponseWriter, r *h
 			log.Println("Row scan error:", err)
 			return
 		}
-
 		// Adds the obtained data to the slice
 		pointsOfContact = append(pointsOfContact, poc)
 	}
 
-	// Checks for errors during iteration
+	// Checks for errors during iteration such as network interruptions and driver errors
 	if err := rows.Err(); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
 		log.Println("Rows error:", err)
 		return
 	}
 
-	// Writes the slice as JSON & sends a HTTP 200 response code
+	// Writes JSON response & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, pointsOfContact)
 }
 
-func GetFuturePointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Extracts path variables from the request
-	vars := mux.Vars(r)
-	studentIDStr, ok1 := vars["student_id"]
-	adminIDStr, ok2 := vars["admin_id"]
-	if !ok1 || !ok2 {
-		utils.WriteError(w, http.StatusBadRequest, "Missing student ID or admin ID")
-		return
+func GetFuturePointsOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extracts optional query parameters from the request
+	studentIDStr := r.URL.Query().Get("student_id")
+	adminIDStr := r.URL.Query().Get("admin_id")
+	tzStr := r.URL.Query().Get("tz")
+
+	// Loads timezone, defaults to UTC if none provided
+	loc := time.UTC
+	if tzStr != "" {
+		var err error
+		loc, err = time.LoadLocation(tzStr)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Invalid timezone")
+			log.Println("Timezone parse error:", err)
+			return
+		}
 	}
 
-	// Converts the "student_id" and "admin_id" strings to integers
-	studentID, err := strconv.Atoi(studentIDStr)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
-		log.Println("Invalid student ID parse error:", err)
-		return
-	}
+	// Sets current date in the specified timezone, formatted for MySQL DATE
+	currentDate := time.Now().In(loc).Format("2006-01-02")
 
-	adminID, err := strconv.Atoi(adminIDStr)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
-		log.Println("Invalid admin ID parse error:", err)
-		return
-	}
-
-	currentDate := time.Now().Format("2006-01-02") // MySQL DATE format
-
-	// Query: join point_of_contact -> activity -> poc_adm
+	// Base SQL query for retrieving future points of contact
 	query := `
 		SELECT
-    		poc.point_of_contact_id,
-    		a.activity_datetime,
-    		poc.event_datetime,
-    		poc.duration,
-    		poc.event_type,
-    		poc.student_id
+			poc.point_of_contact_id,
+			a.activity_datetime,
+			poc.event_datetime,
+			poc.duration,
+			poc.event_type,
+			poc.student_id
 		FROM point_of_contact poc
 		JOIN activity a ON poc.point_of_contact_id = a.activity_id
-		JOIN poc_admin pa ON poc.point_of_contact_id = pa.point_of_contact_id
-		WHERE poc.student_id = ? AND pa.admin_id = ? AND poc.event_datetime > ?
 	`
+	args := []any{}
+	where := []string{"poc.event_datetime > ?"}
+	args = append(args, currentDate)
+
+	// Optional student filter
+	if studentIDStr != "" {
+		studentID, err := strconv.Atoi(studentIDStr)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+			log.Println("Invalid student ID parse error:", err)
+			return
+		}
+		where = append(where, "poc.student_id = ?")
+		args = append(args, studentID)
+	}
+
+	// Optional admin filter
+	if adminIDStr != "" {
+		adminID, err := strconv.Atoi(adminIDStr)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
+			log.Println("Invalid admin ID parse error:", err)
+			return
+		}
+		query += `
+			JOIN poc_admin pa ON poc.point_of_contact_id = pa.point_of_contact_id
+		`
+		where = append(where, "pa.admin_id = ?")
+		args = append(args, adminID)
+	}
+
+	// Final query assembly
+	if len(where) > 0 {
+		query += " WHERE " + strings.Join(where, " AND ")
+	}
+	query += " ORDER BY poc.event_datetime ASC"
 
 	// Executes written SQL
-	rows, err := db.QueryContext(r.Context(), query, studentID, adminID, currentDate)
+	rows, err := db.QueryContext(r.Context(), query, args...)
 
 	// Error message if QueryContext fails
 	if err != nil {
@@ -453,19 +350,18 @@ func GetFuturePointsOfContactByStudentIDAndAdminID(db *sql.DB, w http.ResponseWr
 			log.Println("Row scan error:", err)
 			return
 		}
-
 		// Adds the obtained data to the slice
 		pointsOfContact = append(pointsOfContact, poc)
 	}
 
-	// Checks for errors during iteration
+	// Checks for errors during iteration such as network interruptions and driver errors
 	if err := rows.Err(); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
 		log.Println("Rows error:", err)
 		return
 	}
 
-	// Writes the slice as JSON & sends a HTTP 200 response code
+	// Writes JSON response & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, pointsOfContact)
 }
 

@@ -110,22 +110,25 @@ func GetActivityByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extracts query parameters from the request URL
 	dateStr := r.URL.Query().Get("date")
 	tzStr := r.URL.Query().Get("tz")
 	studentIDStr := r.URL.Query().Get("student_id")
 	adminIDStr := r.URL.Query().Get("admin_id")
 
+	// Sets the default timezone to UTC or loads the provided timezone
 	loc := time.UTC
 	if tzStr != "" {
 		var err error
 		loc, err = time.LoadLocation(tzStr)
 		if err != nil {
 			utils.WriteError(w, http.StatusBadRequest, "Invalid timezone")
+			log.Println("Timezone parse error:", err)
 			return
 		}
 	}
 
-	// --- Base activity query ---
+	// Base SQL query to retrieve all activities
 	query := `
 		SELECT activity_id, activity_datetime
 		FROM activity
@@ -133,11 +136,12 @@ func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	args := []any{}
 	where := []string{}
 
-	// --- Optional date filter ---
+	// Optional date filter — converts date string to time range
 	if dateStr != "" {
 		targetDate, err := time.ParseInLocation("2006-01-02", dateStr, loc)
 		if err != nil {
 			utils.WriteError(w, http.StatusBadRequest, "Invalid date format (expected YYYY-MM-DD)")
+			log.Println("Date parse error:", err)
 			return
 		}
 		start := targetDate
@@ -146,44 +150,49 @@ func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		args = append(args, start.UTC(), end.UTC())
 	}
 
-	// --- Optional student filter ---
+	// Optional student filter — restricts to activities linked to a student
 	if studentIDStr != "" {
 		where = append(where, `
-        activity_id IN (
-            SELECT point_of_contact_id FROM point_of_contact WHERE student_id = ?
-            UNION
-            SELECT specific_documentation_id FROM specific_documentation WHERE student_id = ?
-        )
-    `)
+			activity_id IN (
+				SELECT point_of_contact_id FROM point_of_contact WHERE student_id = ?
+				UNION
+				SELECT specific_documentation_id FROM specific_documentation WHERE student_id = ?
+			)
+		`)
 		args = append(args, studentIDStr, studentIDStr)
 	}
 
-	// --- Optional admin filter ---
+	// Optional admin filter — restricts to activities linked to an admin
 	if adminIDStr != "" {
 		where = append(where, `
-        activity_id IN (
-            SELECT poc.point_of_contact_id
-            FROM point_of_contact poc
-            INNER JOIN poc_admin pa ON pa.point_of_contact_id = poc.point_of_contact_id
-            WHERE pa.admin_id = ?
-        )
-    `)
+			activity_id IN (
+				SELECT poc.point_of_contact_id
+				FROM point_of_contact poc
+				INNER JOIN poc_admin pa ON pa.point_of_contact_id = poc.point_of_contact_id
+				WHERE pa.admin_id = ?
+			)
+		`)
 		args = append(args, adminIDStr)
 	}
 
+	// Adds all conditions to the final query
 	if len(where) > 0 {
 		query += " WHERE " + strings.Join(where, " AND ")
 	}
 	query += " ORDER BY activity_datetime DESC"
 
+	// Executes written SQL query
 	rows, err := db.QueryContext(r.Context(), query, args...)
+
+	// Error message if QueryContext fails
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to query activities")
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain activities")
 		log.Println("DB query error:", err)
 		return
 	}
 	defer rows.Close()
 
+	// Defines supporting structs for output
 	type Person struct {
 		ID            int    `json:"id"`
 		FirstName     string `json:"first_name"`
@@ -201,10 +210,13 @@ func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		EventDateTime    *time.Time `json:"event_datetime,omitempty"`
 	}
 
-	activities := []ActivityData{}
+	// Creates an empty slice to store results
+	activities := make([]ActivityData, 0)
 
+	// Reads each row returned by the database
 	for rows.Next() {
 		var a ActivityData
+		// Parses current row data into ActivityData fields
 		if err := rows.Scan(&a.ActivityID, &a.ActivityDateTime); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse activities")
 			log.Println("Row scan error:", err)
@@ -223,16 +235,17 @@ func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 			WHERE point_of_contact_id = ?
 		`, a.ActivityID).Scan(&poc.PointOfContactID, &poc.StudentID, &poc.EventDateTime)
 
+		// Found: Point of Contact type
 		if err == nil {
-			// Student
 			var student Person
-			db.QueryRowContext(r.Context(), `
+			if err := db.QueryRowContext(r.Context(), `
 				SELECT person_id, first_name, preferred_name
 				FROM person
 				WHERE person_id = ?
-			`, poc.StudentID).Scan(&student.ID, &student.FirstName, &student.PreferredName)
+			`, poc.StudentID).Scan(&student.ID, &student.FirstName, &student.PreferredName); err != nil {
+				log.Println("Student query error:", err)
+			}
 
-			// Admins
 			adminRows, _ := db.QueryContext(r.Context(), `
 				SELECT p.person_id, p.first_name, p.preferred_name
 				FROM admin a
@@ -244,8 +257,9 @@ func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 			admins := []Person{}
 			for adminRows.Next() {
 				var adm Person
-				adminRows.Scan(&adm.ID, &adm.FirstName, &adm.PreferredName)
-				admins = append(admins, adm)
+				if err := adminRows.Scan(&adm.ID, &adm.FirstName, &adm.PreferredName); err == nil {
+					admins = append(admins, adm)
+				}
 			}
 			adminRows.Close()
 
@@ -267,30 +281,33 @@ func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 			SELECT specific_documentation_id, student_id, doc_type
 			FROM specific_documentation
 			WHERE specific_documentation_id = ?
-
 		`, a.ActivityID).Scan(&doc.ID, &doc.StudentID, &doc.DocType)
 
+		// Found: Specific Documentation type
 		if err == nil {
 			var student Person
-			db.QueryRowContext(r.Context(), `
+			if err := db.QueryRowContext(r.Context(), `
 				SELECT person_id, first_name, preferred_name
 				FROM person
 				WHERE person_id = ?
-			`, doc.StudentID).Scan(&student.ID, &student.FirstName, &student.PreferredName)
+			`, doc.StudentID).Scan(&student.ID, &student.FirstName, &student.PreferredName); err != nil {
+				log.Println("Student query error:", err)
+			}
 
 			a.Type = "specific_documentation"
 			a.Student = student
 			a.DocType = &doc.DocType
-
 			activities = append(activities, a)
 		}
 	}
 
+	// Checks for iteration errors
 	if err := rows.Err(); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Operational error")
 		log.Println("Rows error:", err)
 		return
 	}
 
+	// Writes the slice as JSON & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, activities)
 }
