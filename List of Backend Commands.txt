@@ -15,6 +15,7 @@ BULK COMMANDS
 Person[] getPeople()
 Admin[] getAdmins()
 Student[] getStudents(name?: string)
+Student[] getPinnedByAdminID(admin_id: number)
 Activity[] getActivities()
 ActivityData[] getActivitiesSummary(date?: Date, tz?: string, student_id?: number, admin_id?: number)
 Documentation[] getDocumentation()
@@ -31,7 +32,6 @@ Accommodation[] getAccommodations()
 {student_id, disability_id}[] getStuDis()
 {student_id, accommodation_id}[] getStuAccom()
 {admin_id, student_id}[] getPinned()
-Student[] getPinnedByAdminID(admin_id: number)
 {admin_id, activity_id}[] getPocAdmin()
 
 ID COMMANDS
@@ -80,11 +80,11 @@ DeletePocAdmin(point_of_contact_id: number, admin_id: number)
 DeletePersonalDocumentationByAdminID(admin_id?: number) // NEED TO DO
 DeleteSpecificDocumentationByStudentID(student_id: number) // NEED TO DO
 DeletePointsOfContact(admin_id?: number, student_id?: number) // NEED TO DO
-DeletePocAdminByAdminID(admin_id: number)
+DeletePocAdminByAdminID(admin_id: number) // NEEDS A ROUTE. ALREADY HAS HANDLER
 DeletePocAdminByPointOfContactID(point_of_contact_id: number) // NEED TO DO
-DeletePinnedByAdminID(admin_id: number)
+DeletePinnedByAdminID(admin_id: number) // NEEDS A ROUTE. ALREADY HAS HANDLER
 DeletePinnedByStudentID(student_id: number) // NEED TO DO
-DeleteStuDisByStudentID(student_id: number)
+DeleteStuDisByStudentID(student_id: number) // NEEDS A ROUTE. ALREADY HAS HANDLER
 DeleteStuDisByDisabilityID(disability_id: number) // NEED TO DO
-DeleteStuAccomByStudentID(student_id: number)
+DeleteStuAccomByStudentID(student_id: number) // NEEDS A ROUTE. ALREADY HAS HANDLER
 DeleteStuAccomByAccommodationID(accommodation_id: number) // NEED TO DO
