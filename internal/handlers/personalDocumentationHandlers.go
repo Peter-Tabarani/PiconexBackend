@@ -22,7 +22,7 @@ func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	// Base SQL query for retrieving personal documentation
 	query := `
 		SELECT
-			pd.personal_documentation_id, pd.admin_id, a.activity_datetime, d.file
+			pd.personal_documentation_id, pd.admin_id, a.activity_datetime, d.file, d.file_name
 		FROM personal_documentation pd
 		JOIN activity a ON pd.personal_documentation_id = a.activity_id
 		JOIN documentation d ON pd.personal_documentation_id = d.documentation_id
@@ -60,7 +60,7 @@ func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	for rows.Next() {
 		var pd models.PersonalDocumentation
 		// Parses the current data into fields of "pd" variable
-		if err := rows.Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File); err != nil {
+		if err := rows.Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File, &pd.FileName); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan personal documentation")
 			log.Println("Row scan error:", err)
 			return
@@ -99,7 +99,7 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 
 	// SQL query to select a single personal_documentation
 	query := `
-		SELECT pd.personal_documentation_id, pd.admin_id, a.activity_datetime, d.file
+		SELECT pd.personal_documentation_id, pd.admin_id, a.activity_datetime, d.file, d.file_name
 		FROM personal_documentation pd
 		JOIN activity a ON pd.personal_documentation_id = a.activity_id
 		JOIN documentation d ON pd.personal_documentation_id = d.documentation_id
@@ -110,7 +110,7 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	var pd models.PersonalDocumentation
 
 	// Executes query
-	err = db.QueryRowContext(r.Context(), query, personalDocumentationID).Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File)
+	err = db.QueryRowContext(r.Context(), query, personalDocumentationID).Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File, &pd.FileName)
 
 	// Error message if no rows are found
 	if err == sql.ErrNoRows {
@@ -144,7 +144,7 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	pd.ActivityDateTime = time.Now()
 
 	// Validates required fields
-	if pd.AdminID == 0 || len(pd.File) == 0 {
+	if pd.AdminID == 0 || len(pd.File) == 0 || pd.FileName == "" {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -183,8 +183,8 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Inserts into documentation table
 	_, err = tx.ExecContext(r.Context(),
-		"INSERT INTO documentation (documentation_id, file) VALUES (?, ?)",
-		lastID, pd.File,
+		"INSERT INTO documentation (documentation_id, file, file_name) VALUES (?, ?, ?)",
+		lastID, pd.File, pd.FileName,
 	)
 
 	// Error message if ExecContext fails
@@ -254,7 +254,7 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	pd.ActivityDateTime = time.Now()
 
 	// Validates required fields
-	if pd.AdminID == 0 || len(pd.File) == 0 {
+	if pd.AdminID == 0 || len(pd.File) == 0 || pd.FileName == "" {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -283,8 +283,7 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Executes written SQL to update the documentation data
 	_, err = tx.ExecContext(r.Context(),
-		"UPDATE documentation SET file=? WHERE documentation_id=?",
-		pd.File, personalDocumentationID,
+		"UPDATE documentation SET file=?, file_name=? WHERE documentation_id=?",
 	)
 
 	// Error message if ExecContext fails

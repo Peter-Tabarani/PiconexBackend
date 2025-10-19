@@ -22,7 +22,7 @@ func GetSpecificDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	// Base SQL query for retrieving specific documentation
 	query := `
 		SELECT
-			sd.specific_documentation_id, sd.student_id, sd.doc_type, a.activity_datetime, d.file
+			sd.specific_documentation_id, sd.student_id, sd.doc_type, a.activity_datetime, d.file, d.file_name
 		FROM specific_documentation sd
 		JOIN activity a ON sd.specific_documentation_id = a.activity_id
 		JOIN documentation d ON sd.specific_documentation_id = d.documentation_id
@@ -59,7 +59,7 @@ func GetSpecificDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	for rows.Next() {
 		var sd models.SpecificDocumentation
 		// Parses the current data into fields of "sd" variable
-		if err := rows.Scan(&sd.SpecificDocumentationID, &sd.StudentID, &sd.DocType, &sd.ActivityDateTime, &sd.File); err != nil {
+		if err := rows.Scan(&sd.SpecificDocumentationID, &sd.StudentID, &sd.DocType, &sd.ActivityDateTime, &sd.File, &sd.FileName); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan specific documentation")
 			log.Println("Row scan error:", err)
 			return
@@ -98,7 +98,7 @@ func GetSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 
 	// SQL query to select a single specific_documentation
 	query := `
-		SELECT sd.specific_documentation_id, sd.student_id, sd.doc_type, a.activity_datetime, d.file
+		SELECT sd.specific_documentation_id, sd.student_id, sd.doc_type, a.activity_datetime, d.file, d.file_name
 		FROM specific_documentation sd
 		JOIN activity a ON sd.specific_documentation_id = a.activity_id
 		JOIN documentation d ON sd.specific_documentation_id = d.documentation_id
@@ -109,7 +109,7 @@ func GetSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	var sd models.SpecificDocumentation
 
 	// Executes query
-	err = db.QueryRowContext(r.Context(), query, specificDocumentationID).Scan(&sd.SpecificDocumentationID, &sd.StudentID, &sd.DocType, &sd.ActivityDateTime, &sd.File)
+	err = db.QueryRowContext(r.Context(), query, specificDocumentationID).Scan(&sd.SpecificDocumentationID, &sd.StudentID, &sd.DocType, &sd.ActivityDateTime, &sd.File, &sd.FileName)
 
 	// Error message if no rows are found
 	if err == sql.ErrNoRows {
@@ -143,7 +143,7 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	sd.ActivityDateTime = time.Now()
 
 	// Validates required fields
-	if sd.StudentID == 0 || sd.DocType == "" || len(sd.File) == 0 {
+	if sd.StudentID == 0 || sd.DocType == "" || len(sd.File) == 0 || sd.FileName == "" {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -180,8 +180,8 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Inserts into documentation table
 	_, err = tx.ExecContext(r.Context(),
-		"INSERT INTO documentation (documentation_id, file) VALUES (?, ?)",
-		lastID, sd.File,
+		"INSERT INTO documentation (documentation_id, file, file_name) VALUES (?, ?, ?)",
+		lastID, sd.File, sd.FileName,
 	)
 
 	// Error message if ExecContext fails
@@ -251,7 +251,7 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	sd.ActivityDateTime = time.Now()
 
 	// Validates required fields
-	if sd.StudentID == 0 || sd.DocType == "" || len(sd.File) == 0 {
+	if sd.StudentID == 0 || sd.DocType == "" || len(sd.File) == 0 || sd.FileName == "" {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -280,8 +280,8 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Executes written SQL to update the documentation data
 	_, err = tx.ExecContext(r.Context(),
-		"UPDATE documentation SET file=? WHERE documentation_id=?",
-		sd.File, specificDocumentationID,
+		"UPDATE documentation SET file=?, file_name=? WHERE documentation_id=?",
+		sd.File, sd.FileName, specificDocumentationID,
 	)
 
 	// Error message if ExecContext fails

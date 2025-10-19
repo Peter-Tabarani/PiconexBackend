@@ -21,7 +21,8 @@ func main() {
 
 	// --- Put any SQL query you want here ---
 	query := `
-ALTER TABLE poc_admin CHANGE COLUMN activity_id point_of_contact_id INT NOT NULL;
+ALTER TABLE documentation
+MODIFY COLUMN file_name VARCHAR(255) NOT NULL;;
 `
 	// Decide if it's a query (returns rows) or command (update/insert)
 	// We'll try Query first, then fallback to Exec if no rows returned

@@ -74,6 +74,7 @@ type Documentation struct {
 	DocumentationID  int       `json:"documentation_id"`
 	ActivityDateTime time.Time `json:"activity_datetime"`
 	File             []byte    `json:"file"`
+	FileName         string    `json:"file_name"`
 }
 
 type PersonalDocumentation struct {
@@ -81,6 +82,7 @@ type PersonalDocumentation struct {
 	AdminID                 int       `json:"admin_id"`
 	ActivityDateTime        time.Time `json:"activity_datetime"`
 	File                    []byte    `json:"file"`
+	FileName                string    `json:"file_name"`
 }
 
 type SpecificDocumentation struct {
@@ -89,6 +91,7 @@ type SpecificDocumentation struct {
 	DocType                 string    `json:"doc_type"`
 	ActivityDateTime        time.Time `json:"activity_datetime"`
 	File                    []byte    `json:"file"`
+	FileName                string    `json:"file_name"`
 }
 
 type Disability struct {
