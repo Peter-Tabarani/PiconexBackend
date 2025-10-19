@@ -452,3 +452,79 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		"message": "Specific documentation deleted successfully",
 	})
 }
+
+func DeleteSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extract student_id from route params
+	vars := mux.Vars(r)
+	studentIDStr, ok := vars["student_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
+		return
+	}
+
+	// Converts the "student_id" string to an integer
+	studentID, err := strconv.Atoi(studentIDStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// Begin a transaction (not strictly required for single multi-table DELETE, but safer)
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
+	// Multi-table delete query:
+	// Deletes from specific_documentation, documentation, and activity in one go
+	query := `
+		DELETE sd, d, a
+		FROM specific_documentation sd
+		JOIN documentation d ON d.documentation_id = sd.specific_documentation_id
+		JOIN activity a ON a.activity_id = d.documentation_id
+		WHERE sd.student_id = ?;
+	`
+
+	// Executes written SQL to delete the documentation
+	res, err := tx.ExecContext(r.Context(), query, studentID)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete specific documentation")
+		log.Println("Delete query error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "No specific documentation found for this student")
+		return
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
+		return
+	}
+
+	// Respond with success
+	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"message":       "All specific documentation for student " + studentIDStr + " deleted successfully",
+		"rows_affected": rowsAffected / 3, // Each specific documentation involves 3 rows deleted
+	})
+}

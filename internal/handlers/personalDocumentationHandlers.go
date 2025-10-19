@@ -455,3 +455,79 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		"message": "Personal documentation deleted successfully",
 	})
 }
+
+func DeletePersonalDocumentationByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extract admin_id from route params
+	vars := mux.Vars(r)
+	adminIDStr, ok := vars["admin_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID")
+		return
+	}
+
+	// Converts the "admin_id" string to an integer
+	adminID, err := strconv.Atoi(adminIDStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// Begin a transaction (not strictly required for single multi-table DELETE, but safer)
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
+	// Multi-table delete query:
+	// Deletes from personal_documentation, documentation, and activity in one go
+	query := `
+		DELETE pd, d, a
+		FROM personal_documentation pd
+		JOIN documentation d ON d.documentation_id = pd.personal_documentation_id
+		JOIN activity a ON a.activity_id = d.documentation_id
+		WHERE pd.admin_id = ?;
+	`
+
+	// Executes written SQL to delete the documentation
+	res, err := tx.ExecContext(r.Context(), query, adminID)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete personal documentation")
+		log.Println("Delete query error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "No personal documentation found for this admin")
+		return
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
+		return
+	}
+
+	// Respond with success
+	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"message":       "All personal documentation for admin " + adminIDStr + " deleted successfully",
+		"rows_affected": rowsAffected / 3, // Each personal documentation involves 3 rows deleted
+	})
+}

@@ -30,6 +30,19 @@ func RegisterPersonalDocumentationRoutes(router *mux.Router, db *sql.DB) {
 		})),
 	).Methods("GET", "POST", "OPTIONS")
 
+	pdRouter.Handle("/admin/{admin_id}",
+		utils.RollMiddleware(map[string][]string{
+			"DELETE": {"admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodDelete:
+				handlers.DeletePersonalDocumentationByAdminID(db, w, r)
+			default:
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			}
+		})),
+	).Methods("DELETE", "OPTIONS")
+
 	pdRouter.Handle("/{personal_documentation_id}",
 		utils.RollMiddleware(map[string][]string{
 			"GET":    {"admin"},

@@ -17,19 +17,22 @@ func RegisterPointOfContactRoutes(router *mux.Router, db *sql.DB) {
 	pocRouter.Handle(
 		"",
 		utils.RollMiddleware(map[string][]string{
-			"GET":  {"admin"},
-			"POST": {"student", "admin"},
+			"GET":    {"admin"},
+			"POST":   {"student", "admin"},
+			"DELETE": {"admin"},
 		}, utils.ResourceCreateOwnershipMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
 				handlers.GetPointsOfContact(db, w, r)
 			case http.MethodPost:
 				handlers.CreatePointOfContact(db, w, r)
+			case http.MethodDelete:
+				handlers.DeletePointsOfContact(db, w, r)
 			default:
 				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 			}
 		}))),
-	).Methods("GET", "POST", "OPTIONS")
+	).Methods("GET", "POST", "DELETE", "OPTIONS")
 
 	pocRouter.Handle(
 		"/past",

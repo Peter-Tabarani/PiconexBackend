@@ -640,3 +640,96 @@ func DeletePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		"message": "Point of Contact deleted successfully",
 	})
 }
+
+func DeletePointsOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Parse optional query params
+	studentIDStr := r.URL.Query().Get("student_id")
+	adminIDStr := r.URL.Query().Get("admin_id")
+
+	// Prevent deleting all records
+	if studentIDStr == "" && adminIDStr == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Must provide at least student_id or admin_id")
+		return
+	}
+
+	// Begin a transaction for safety
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
+	// Build the base multi-table delete query dynamically
+	query := `
+		DELETE poc, a
+		FROM point_of_contact poc
+		JOIN activity a ON a.activity_id = poc.point_of_contact_id
+	`
+	var args []interface{}
+	var whereClauses []string
+
+	// Add filter for student_id
+	if studentIDStr != "" {
+		studentID, err := strconv.Atoi(studentIDStr)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Invalid student_id")
+			return
+		}
+		whereClauses = append(whereClauses, "poc.student_id = ?")
+		args = append(args, studentID)
+	}
+
+	// Add filter for admin_id (through poc_admin join)
+	if adminIDStr != "" {
+		adminID, err := strconv.Atoi(adminIDStr)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Invalid admin_id")
+			return
+		}
+		query += " JOIN poc_admin pa ON pa.point_of_contact_id = poc.point_of_contact_id"
+		whereClauses = append(whereClauses, "pa.admin_id = ?")
+		args = append(args, adminID)
+	}
+
+	// Combine conditions
+	if len(whereClauses) > 0 {
+		query += " WHERE " + strings.Join(whereClauses, " AND ")
+	}
+
+	// Execute delete query
+	res, err := tx.ExecContext(r.Context(), query, args...)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete point(s) of contact")
+		log.Println("Delete query error:", err)
+		return
+	}
+
+	// Get affected rows
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Handle no matches
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "No points of contact found for given filters")
+		return
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
+		return
+	}
+
+	// Respond with success
+	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"message":       "Point(s) of contact deleted successfully",
+		"rows_affected": rowsAffected,
+	})
+}
