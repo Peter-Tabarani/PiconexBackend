@@ -16,32 +16,22 @@ func RegisterRelationshipRoutes(router *mux.Router, db *sql.DB) {
 
 	pinnedRouter.Handle("",
 		utils.RollMiddleware(map[string][]string{
-			"GET":  {"admin"},
-			"POST": {"admin"},
+			"GET":    {"admin"},
+			"POST":   {"admin"},
+			"DELETE": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
 				handlers.GetPinned(db, w, r)
 			case http.MethodPost:
 				handlers.CreatePinned(db, w, r)
-			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			}
-		})),
-	).Methods("GET", "POST", "OPTIONS")
-
-	pinnedRouter.Handle("/{admin_id}/{student_id}",
-		utils.RollMiddleware(map[string][]string{
-			"DELETE": {"admin"},
-		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
 			case http.MethodDelete:
 				handlers.DeletePinned(db, w, r)
 			default:
 				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			}
 		})),
-	).Methods("DELETE", "OPTIONS")
+	).Methods("GET", "POST", "DELETE", "OPTIONS")
 
 	pinnedRouter.Handle("/admin/{admin_id}",
 		utils.RollMiddleware(map[string][]string{
@@ -61,94 +51,64 @@ func RegisterRelationshipRoutes(router *mux.Router, db *sql.DB) {
 
 	stuAccomRouter.Handle("",
 		utils.RollMiddleware(map[string][]string{
-			"GET":  {"admin"},
-			"POST": {"admin"},
+			"GET":    {"admin"},
+			"POST":   {"admin"},
+			"DELETE": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
 				handlers.GetStuAccom(db, w, r)
 			case http.MethodPost:
 				handlers.CreateStuAccom(db, w, r)
-			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			}
-		})),
-	).Methods("GET", "POST", "OPTIONS")
-
-	stuAccomRouter.Handle("/{student_id}/{accommodation_id}",
-		utils.RollMiddleware(map[string][]string{
-			"DELETE": {"admin"},
-		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
 			case http.MethodDelete:
 				handlers.DeleteStuAccom(db, w, r)
 			default:
 				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			}
 		})),
-	).Methods("DELETE", "OPTIONS")
+	).Methods("GET", "POST", "DELETE", "OPTIONS")
 
 	stuDisRouter := router.PathPrefix("/stu-dis").Subrouter()
 	stuDisRouter.Use(utils.WithCORS, utils.AuthMiddleware)
 
 	stuDisRouter.Handle("",
 		utils.RollMiddleware(map[string][]string{
-			"GET":  {"admin"},
-			"POST": {"admin"},
+			"GET":    {"admin"},
+			"POST":   {"admin"},
+			"DELETE": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
 				handlers.GetStuDis(db, w, r)
 			case http.MethodPost:
 				handlers.CreateStuDis(db, w, r)
-			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			}
-		})),
-	).Methods("GET", "POST", "OPTIONS")
-
-	stuDisRouter.Handle("/{student_id}/{disability_id}",
-		utils.RollMiddleware(map[string][]string{
-			"DELETE": {"admin"},
-		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
 			case http.MethodDelete:
 				handlers.DeleteStuDis(db, w, r)
 			default:
 				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			}
 		})),
-	).Methods("DELETE", "OPTIONS")
+	).Methods("GET", "POST", "DELETE", "OPTIONS")
 
 	pocAdminRouter := router.PathPrefix("/poc-admin").Subrouter()
 	pocAdminRouter.Use(utils.WithCORS, utils.AuthMiddleware)
 
 	pocAdminRouter.Handle("",
 		utils.RollMiddleware(map[string][]string{
-			"GET":  {"admin"},
-			"POST": {"admin"},
+			"GET":    {"admin"},
+			"POST":   {"admin"},
+			"DELETE": {"admin"},
 		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
 				handlers.GetPocAdmin(db, w, r)
 			case http.MethodPost:
 				handlers.CreatePocAdmin(db, w, r)
-			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			}
-		})),
-	).Methods("GET", "POST", "OPTIONS")
-
-	pocAdminRouter.Handle("/{point_of_contact_id}/{admin_id}",
-		utils.RollMiddleware(map[string][]string{
-			"DELETE": {"admin"},
-		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
 			case http.MethodDelete:
 				handlers.DeletePocAdmin(db, w, r)
 			default:
 				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			}
 		})),
-	).Methods("DELETE", "OPTIONS")
+	).Methods("GET", "POST", "DELETE", "OPTIONS")
 }

@@ -17,19 +17,50 @@ func RegisterPointOfContactRoutes(router *mux.Router, db *sql.DB) {
 	pocRouter.Handle(
 		"",
 		utils.RollMiddleware(map[string][]string{
-			"GET":  {"admin"},
-			"POST": {"student", "admin"},
+			"GET":    {"admin"},
+			"POST":   {"student", "admin"},
+			"DELETE": {"admin"},
 		}, utils.ResourceCreateOwnershipMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
 				handlers.GetPointsOfContact(db, w, r)
 			case http.MethodPost:
 				handlers.CreatePointOfContact(db, w, r)
+			case http.MethodDelete:
+				handlers.DeletePointsOfContact(db, w, r)
 			default:
 				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 			}
 		}))),
-	).Methods("GET", "POST", "OPTIONS")
+	).Methods("GET", "POST", "DELETE", "OPTIONS")
+
+	pocRouter.Handle(
+		"/past",
+		utils.RollMiddleware(map[string][]string{
+			"GET": {"admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				handlers.GetPastPointsOfContact(db, w, r)
+			default:
+				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+			}
+		})),
+	).Methods("GET", "OPTIONS")
+
+	pocRouter.Handle(
+		"/future",
+		utils.RollMiddleware(map[string][]string{
+			"GET": {"admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				handlers.GetFuturePointsOfContact(db, w, r)
+			default:
+				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+			}
+		})),
+	).Methods("GET", "OPTIONS")
 
 	pocRouter.Handle(
 		"/{point_of_contact_id}",
@@ -56,74 +87,4 @@ func RegisterPointOfContactRoutes(router *mux.Router, db *sql.DB) {
 			}),
 		)),
 	).Methods("GET", "PUT", "DELETE", "OPTIONS")
-
-	pocRouter.Handle(
-		"/admin/{admin_id}/date/{date}",
-		utils.RollMiddleware(map[string][]string{
-			"GET": {"admin"},
-		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				handlers.GetPointsOfContactByAdminIDAndDate(db, w, r)
-			default:
-				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-			}
-		})),
-	).Methods("GET", "OPTIONS")
-
-	pocRouter.Handle(
-		"/future/admin/{admin_id}",
-		utils.RollMiddleware(map[string][]string{
-			"GET": {"admin"},
-		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				handlers.GetFuturePointsOfContactByAdminID(db, w, r)
-			default:
-				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-			}
-		})),
-	).Methods("GET", "OPTIONS")
-
-	pocRouter.Handle(
-		"/past/student/{student_id}/admin/{admin_id}",
-		utils.RollMiddleware(map[string][]string{
-			"GET": {"admin"},
-		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				handlers.GetPastPointsOfContactByStudentIDAndAdminID(db, w, r)
-			default:
-				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-			}
-		})),
-	).Methods("GET", "OPTIONS")
-
-	pocRouter.Handle(
-		"/future/student/{student_id}",
-		utils.RollMiddleware(map[string][]string{
-			"GET": {"admin"}, // Keep as admin role for permissions
-		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				handlers.GetFuturePointsOfContactByStudentID(db, w, r)
-			default:
-				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-			}
-		})),
-	).Methods("GET", "OPTIONS")
-
-	pocRouter.Handle(
-		"/future/student/{student_id}/admin/{admin_id}",
-		utils.RollMiddleware(map[string][]string{
-			"GET": {"admin"},
-		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				handlers.GetFuturePointsOfContactByStudentIDAndAdminID(db, w, r)
-			default:
-				utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
-			}
-		})),
-	).Methods("GET", "OPTIONS")
 }

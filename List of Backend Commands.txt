@@ -5,24 +5,29 @@ returnType commandName(parameters: parameterTypes)
 
 When structuring the routes, I would use something like this:
 
-[PointofContact, Student][] getAppointmentsbyAdminIDandDate(admin_id: number, date: Date)
+ActivityData[] getActivitiesSummary(date?: Date, tz?: string, student_id?: number, admin_id?: number)
 would be
-/appointments/admin/{admin_id}/date/{date}
-
+/activity/summary?date=?&tz=?&student_id=?&admin_id=?
 
 **GET COMMANDS**
 
 BULK COMMANDS
 Person[] getPeople()
 Admin[] getAdmins()
-Students[] getStudents()
-Activity[] getActivity()
+Student[] getStudents(name?: string)
+Student[] getPinnedByAdminID(admin_id: number)
+Activity[] getActivities()
+ActivityData[] getActivitiesSummary(date?: Date, tz?: string, student_id?: number, admin_id?: number)
 Documentation[] getDocumentation()
-PersonalDocumentation[] getPersonalDocumentation()
-SpecificDocumentation[] getSpecificDocumentation()
+PersonalDocumentation[] getPersonalDocumentations(admin_id?: number)
+SpecificDocumentation[] getSpecificDocumentations(student_id?: number)
 PointofContact[] getPointsofContact()
+PointOfContact[] getPastPointsOfContact(admin_id?: number, student_id?: number)
+PointOfContact[] getFuturePointsOfContact(admin_id?: number, student_id?: number)
 Disability[] getDisabilities()
+{Disability, hasDisability: boolean}[] getDisabilitiesByStudentID(student_id: number)
 Accommodation[] getAccommodations()
+{Accommodation, hasAccommodation: boolean}[] getAccommodationsByStudentID(student_id: number)
 
 {student_id, disability_id}[] getStuDis()
 {student_id, accommodation_id}[] getStuAccom()
@@ -41,33 +46,6 @@ PointofContact getPointofContactByID(point_of_contact_id: number)
 Disability getDisabilityByID(disability_id: number)
 Accommodation getAccommodationByID(accommodation_id: number)
 
-MISCELLANEOUS
-Student[] getPinnedByAdminID(admin_id: number)
-Student[] getStudentsByName(name: string)
-Activity[] getActivitiesByDate(date: Date)
-SpecificDocumentation[] getSpecificDocumentationByStudentID(student_id: number)
-PointOfContact[] getPointsOfContactByAdminIDAndDate(admin_id: number, date: Date)
-PointOfContact[] getFuturePointsOfContactByAdminID(admin_id: number)
-PointOfContact[] getPastPointsOfContactByStudentIDAndAdminID(student_id: number, admin_id: number)
-PointOfContact[] getFuturePointsOfContactByStudentID(student_id: number)
-PointOfContact[] getFuturePointsOfContactByStudentIDAndAdminID(student_id: number, admin_id: number)
-{Disability, hasDisability: boolean}[] getDisabilitiesByStudentID(student_id: number)
-{Accommodation, hasAccommodation: boolean}[] getAccommodationsByStudentID(student_id: number)
-
-NEED TO ADD
-{Activity, name: string} getIncomingActivity(admin_id: number)
-PersonalDocumentation[] getPersonalDocumentationByAdminID(admin_id: number)
-PointOfContact[] getPointsOfContactByStudentID(student_id: number)
-
-// PointOfContact formatter. The handler needs to pull the Student data along with the PointOfContact. New route?
-{activity_id: number, name: string, event_datetime: Date} getPointsOfContactSummaryByAdminIDAndDate(admin_id: number, date: Date)
-
-// ActivitiesSummaryByDate formatter. The handler needs to pull the respective other data. Definitely new route
-{activity_id: number, summary: string, datetime: Date} getActivitiesSummaryByDate(date: Date)
-
-// ActivitiesSummaryByStudent formatter. The handler needs to pull the respective other data. Definitely new route
-{activity_id: number, summary: string, datetime: Date} getActivitiesSummaryByStudentID(student_id: number)
-
 **CREATE COMMANDS**
 CreateStudent(student_id: number)
 CreateAdmin(admin_id: number)
@@ -77,23 +55,6 @@ CreateSpecificDocumentation(specific_documentation_id: number)
 CreatePersonalDocumentation(personal_documentation_id: number)
 CreatePointOfContact(point_of_contact_id: number)
 
-**DELETE COMMANDS**
-DeleteStudent(student_id: number)
-DeleteAdmin(admin_id: number)
-DeleteAccommodation(accommodation_id: number)
-DeleteDisability(disability_id: number)
-DeleteSpecificDocumentation(specific_documentation_id: number)
-DeletePersonalDocumentation(personal_documentation_id: number)
-DeletePointOfContact(point_of_contact_id: number)
-
-DeletePersonalDocumentationByAdminID(admin_id: number) // NEED TO DO
-DeleteSpecificDocumentationByStudentID(student_id: number) // NEED TO DO
-DeletePointOfContactByStudentID(student_id: number) // NEED TO DO
-DeletePocAdminByAdminID(admin_id: number)
-DeletePinnedByAdminID(admin_id: number)
-DeleteStuDisByStudentID(student_id: number)
-DeleteStuAccomByStudentID(student_id: number)
-
 **UPDATE COMMANDS**
 UpdateStudent(student_id: number)
 UpdateAdmin(admin_id: number)
@@ -102,3 +63,20 @@ UpdateDisability(disability_id: number)
 UpdateSpecificDocumentation(specific_documentation_id: number)
 UpdatePersonalDocumentation(personal_documentation_id: number)
 UpdatePointOfContact(point_of_contact_id: number)
+
+**DELETE COMMANDS**
+DeleteStudent(student_id: number)
+DeleteAdmin(admin_id: number)
+DeleteAccommodation(accommodation_id: number)
+DeleteDisability(disability_id: number)
+DeleteSpecificDocumentation(specific_documentation_id: number)
+DeletePersonalDocumentation(personal_documentation_id: number)
+DeletePointOfContact(point_of_contact_id: number)
+DeletePinned(student_id?: number, admin_id?: number)
+DeleteStuDis(student_id?: number, disability_id?: number)
+DeleteStuAccom(student_id?: number, accommodation_id?: number)
+DeletePocAdmin(point_of_contact_id?: number, admin_id?: number)
+
+DeletePersonalDocumentationByAdminID(admin_id?: number)
+DeleteSpecificDocumentationByStudentID(student_id: number)
+DeletePointsOfContact(admin_id?: number, student_id?: number)

@@ -34,14 +34,39 @@ curl -X POST http://localhost:8080/point-of-contact \
  -H "Content-Type: application/json" \
  -H "Authorization: Bearer superkey" \
  -d '{
-"event_datetime": "2025-09-22T13:30:00Z",
+"event_datetime": "2025-10-07T13:30:00Z",
 "duration": 30,
 "event_type": "trad",
-"id": 15
+"student_id": 15
 }'
 
-curl -X GET http://localhost:8080/admin/128 \
+curl -X GET http://localhost:8080/personal-documentation \
  -H "Authorization: Bearer superkey"
+
+curl -X DELETE http://localhost:8080/point-of-contact/student/42 \
+ -H "Authorization: Bearer superkey"
+
+curl -X DELETE http://localhost:8080/point-of-contact?student_id=122 \
+ -H "Authorization: Bearer superkey"
+
+curl -X DELETE http://localhost:8080/admin/127 \
+ -H "Authorization: Bearer superkey"
+
+curl -X POST http://localhost:8080/personal-documentation \
+ -H "Content-Type: application/json" \
+ -H "Authorization: Bearer superkey" \
+ -d '{
+"admin_id": 127,
+"file": ""
+}'
+
+curl -X POST http://localhost:8080/poc-admin \
+ -H "Content-Type: application/json" \
+ -H "Authorization: Bearer superkey" \
+ -d '{
+"admin_id": 127,
+"point_of_contact_id": 199
+}'
 
 curl -X GET http://localhost:8080/personal-documentation \
  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMjIsInJvbGUiOiJzdHVkZW50IiwiZXhwIjoxNzU4NTg4Nzg4LCJpYXQiOjE3NTg1ODUxODh9.GrkAgTQaXtOx8hwwF6XsiqE1Vdp0PqQ_rL9qut-QxqI"

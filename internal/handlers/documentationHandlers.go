@@ -15,7 +15,7 @@ import (
 func GetDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
-		SELECT d.documentation_id, ac.activity_datetime, d.file
+		SELECT d.documentation_id, ac.activity_datetime, d.file, d.file_name
 		FROM documentation d
 		JOIN activity ac ON d.documentation_id = ac.activity_id
 	`
@@ -38,7 +38,7 @@ func GetDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var d models.Documentation
 		// Parses the current data into fields of "d" variable
-		if err := rows.Scan(&d.DocumentationID, &d.ActivityDateTime, &d.File); err != nil {
+		if err := rows.Scan(&d.DocumentationID, &d.ActivityDateTime, &d.File, &d.FileName); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse documentations")
 			log.Println("Row scan error:", err)
 			return
@@ -78,7 +78,7 @@ func GetDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// All data being selected for this GET command
 	query := `
-		SELECT d.documentation_id, a.activity_datetime, d.file
+		SELECT d.documentation_id, a.activity_datetime, d.file, d.file_name
 		FROM documentation d
 		JOIN activity a ON d.documentation_id = a.activity_id
 		WHERE d.documentation_id = ?
@@ -88,7 +88,7 @@ func GetDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	var d models.Documentation
 
 	// Executes written SQL and retrieves only one row
-	err = db.QueryRowContext(r.Context(), query, documentationID).Scan(&d.DocumentationID, &d.ActivityDateTime, &d.File)
+	err = db.QueryRowContext(r.Context(), query, documentationID).Scan(&d.DocumentationID, &d.ActivityDateTime, &d.File, &d.FileName)
 
 	// Error message if no rows are found
 	if err == sql.ErrNoRows {

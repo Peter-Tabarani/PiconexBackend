@@ -16,20 +16,35 @@ import (
 )
 
 func GetSpecificDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// All data being selected for this GET command
+	// Extracts optional query parameter from the request
+	studentIDStr := r.URL.Query().Get("student_id")
+
+	// Base SQL query for retrieving specific documentation
 	query := `
 		SELECT
-    		sd.specific_documentation_id, sd.student_id, sd.doc_type, a.activity_datetime, d.file
+			sd.specific_documentation_id, sd.student_id, sd.doc_type, a.activity_datetime, d.file, d.file_name
 		FROM specific_documentation sd
 		JOIN activity a ON sd.specific_documentation_id = a.activity_id
 		JOIN documentation d ON sd.specific_documentation_id = d.documentation_id
-
 	`
 
-	// Executes written SQL
-	rows, err := db.QueryContext(r.Context(), query)
+	args := []any{}
 
-	// Error message if QueryContext fails
+	// Optional filter by student_id
+	if studentIDStr != "" {
+		// Converts the "student_id" string to an integer
+		studentID, err := strconv.Atoi(studentIDStr)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+			log.Println("Invalid ID parse error:", err)
+			return
+		}
+		query += " WHERE sd.student_id = ?"
+		args = append(args, studentID)
+	}
+
+	// Executes written SQL
+	rows, err := db.QueryContext(r.Context(), query, args...)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain specific documentations")
 		log.Println("DB query error:", err)
@@ -44,12 +59,11 @@ func GetSpecificDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	for rows.Next() {
 		var sd models.SpecificDocumentation
 		// Parses the current data into fields of "sd" variable
-		if err := rows.Scan(&sd.SpecificDocumentationID, &sd.StudentID, &sd.DocType, &sd.ActivityDateTime, &sd.File); err != nil {
+		if err := rows.Scan(&sd.SpecificDocumentationID, &sd.StudentID, &sd.DocType, &sd.ActivityDateTime, &sd.File, &sd.FileName); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan specific documentation")
 			log.Println("Row scan error:", err)
 			return
 		}
-
 		// Adds the obtained data to the slice
 		specificDocumentation = append(specificDocumentation, sd)
 	}
@@ -84,7 +98,7 @@ func GetSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 
 	// SQL query to select a single specific_documentation
 	query := `
-		SELECT sd.specific_documentation_id, sd.student_id, sd.doc_type, a.activity_datetime, d.file
+		SELECT sd.specific_documentation_id, sd.student_id, sd.doc_type, a.activity_datetime, d.file, d.file_name
 		FROM specific_documentation sd
 		JOIN activity a ON sd.specific_documentation_id = a.activity_id
 		JOIN documentation d ON sd.specific_documentation_id = d.documentation_id
@@ -95,7 +109,7 @@ func GetSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	var sd models.SpecificDocumentation
 
 	// Executes query
-	err = db.QueryRowContext(r.Context(), query, specificDocumentationID).Scan(&sd.SpecificDocumentationID, &sd.StudentID, &sd.DocType, &sd.ActivityDateTime, &sd.File)
+	err = db.QueryRowContext(r.Context(), query, specificDocumentationID).Scan(&sd.SpecificDocumentationID, &sd.StudentID, &sd.DocType, &sd.ActivityDateTime, &sd.File, &sd.FileName)
 
 	// Error message if no rows are found
 	if err == sql.ErrNoRows {
@@ -110,70 +124,6 @@ func GetSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 
 	// Writes JSON response & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, sd)
-}
-
-func GetSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Extracts path variables from the request
-	vars := mux.Vars(r)
-	idStr, ok := vars["student_id"]
-	if !ok {
-		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
-		return
-	}
-
-	// Converts the "specific_documentation_id" string to an integer
-	studentID, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
-		log.Println("Invalid ID parse error:", err)
-		return
-	}
-
-	// SQL query to select all specific_documentation for a student
-	query := `
-		SELECT sd.specific_documentation_id, sd.student_id, sd.doc_type, a.activity_datetime, d.file
-		FROM specific_documentation sd
-		JOIN activity a ON sd.specific_documentation_id = a.activity_id
-		JOIN documentation d ON sd.specific_documentation_id = d.documentation_id
-		WHERE sd.student_id = ?
-	`
-
-	// Executes written SQL
-	rows, err := db.QueryContext(r.Context(), query, studentID)
-
-	// Error message if QueryContext fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain specific documentations")
-		log.Println("DB query error:", err)
-		return
-	}
-	defer rows.Close()
-
-	// Creates an empty slice to obtain results
-	specificDocumentation := make([]models.SpecificDocumentation, 0)
-
-	// Reads each row returned by the database
-	for rows.Next() {
-		var sd models.SpecificDocumentation
-		// Parses the current data into fields of "sd" variable
-		if err := rows.Scan(&sd.SpecificDocumentationID, &sd.StudentID, &sd.DocType, &sd.ActivityDateTime, &sd.File); err != nil {
-			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan specific documentation")
-			log.Println("Row scan error:", err)
-			return
-		}
-		// Adds the obtained data to the slice
-		specificDocumentation = append(specificDocumentation, sd)
-	}
-
-	// Checks for errors during iteration such as network interruptions and driver errors
-	if err := rows.Err(); err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Operational Error")
-		log.Println("Rows error:", err)
-		return
-	}
-
-	// Writes JSON response & sends a HTTP 200 response code
-	utils.WriteJSON(w, http.StatusOK, specificDocumentation)
 }
 
 func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
@@ -193,7 +143,7 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	sd.ActivityDateTime = time.Now()
 
 	// Validates required fields
-	if sd.StudentID == 0 || sd.DocType == "" || len(sd.File) == 0 {
+	if sd.StudentID == 0 || sd.DocType == "" || len(sd.File) == 0 || sd.FileName == "" {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -230,8 +180,8 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Inserts into documentation table
 	_, err = tx.ExecContext(r.Context(),
-		"INSERT INTO documentation (documentation_id, file) VALUES (?, ?)",
-		lastID, sd.File,
+		"INSERT INTO documentation (documentation_id, file, file_name) VALUES (?, ?, ?)",
+		lastID, sd.File, sd.FileName,
 	)
 
 	// Error message if ExecContext fails
@@ -301,7 +251,7 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	sd.ActivityDateTime = time.Now()
 
 	// Validates required fields
-	if sd.StudentID == 0 || sd.DocType == "" || len(sd.File) == 0 {
+	if sd.StudentID == 0 || sd.DocType == "" || len(sd.File) == 0 || sd.FileName == "" {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -330,8 +280,8 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Executes written SQL to update the documentation data
 	_, err = tx.ExecContext(r.Context(),
-		"UPDATE documentation SET file=? WHERE documentation_id=?",
-		sd.File, specificDocumentationID,
+		"UPDATE documentation SET file=?, file_name=? WHERE documentation_id=?",
+		sd.File, sd.FileName, specificDocumentationID,
 	)
 
 	// Error message if ExecContext fails
@@ -500,5 +450,81 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	// Writes JSON response & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Specific documentation deleted successfully",
+	})
+}
+
+func DeleteSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extract student_id from route params
+	vars := mux.Vars(r)
+	studentIDStr, ok := vars["student_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing student ID")
+		return
+	}
+
+	// Converts the "student_id" string to an integer
+	studentID, err := strconv.Atoi(studentIDStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// Begin a transaction (not strictly required for single multi-table DELETE, but safer)
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
+	// Multi-table delete query:
+	// Deletes from specific_documentation, documentation, and activity in one go
+	query := `
+		DELETE sd, d, a
+		FROM specific_documentation sd
+		JOIN documentation d ON d.documentation_id = sd.specific_documentation_id
+		JOIN activity a ON a.activity_id = d.documentation_id
+		WHERE sd.student_id = ?;
+	`
+
+	// Executes written SQL to delete the documentation
+	res, err := tx.ExecContext(r.Context(), query, studentID)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete specific documentation")
+		log.Println("Delete query error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "No specific documentation found for this student")
+		return
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
+		return
+	}
+
+	// Respond with success
+	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"message":       "All specific documentation for student " + studentIDStr + " deleted successfully",
+		"rows_affected": rowsAffected / 3, // Each specific documentation involves 3 rows deleted
 	})
 }

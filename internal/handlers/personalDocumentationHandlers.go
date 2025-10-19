@@ -16,18 +16,35 @@ import (
 )
 
 func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// All data being selected for this GET command
+	// Extracts optional query parameter from the request
+	adminIDStr := r.URL.Query().Get("admin_id")
+
+	// Base SQL query for retrieving personal documentation
 	query := `
 		SELECT
-			pd.personal_documentation_id, pd.admin_id, a.activity_datetime, d.file
+			pd.personal_documentation_id, pd.admin_id, a.activity_datetime, d.file, d.file_name
 		FROM personal_documentation pd
 		JOIN activity a ON pd.personal_documentation_id = a.activity_id
 		JOIN documentation d ON pd.personal_documentation_id = d.documentation_id
 	`
 
-	// Executes written SQL
-	rows, err := db.QueryContext(r.Context(), query)
+	args := []any{}
 
+	// Optional filter by admin_id
+	if adminIDStr != "" {
+		// Converts the "admin_id" string to an integer
+		adminID, err := strconv.Atoi(adminIDStr)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
+			log.Println("Invalid ID parse error:", err)
+			return
+		}
+		query += " WHERE pd.admin_id = ?"
+		args = append(args, adminID)
+	}
+
+	// Executes written SQL
+	rows, err := db.QueryContext(r.Context(), query, args...)
 	// Error message if QueryContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain personal documentation")
@@ -42,8 +59,8 @@ func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	// Reads each row returned by the database
 	for rows.Next() {
 		var pd models.PersonalDocumentation
-		// Parses the current data into fields of "a" variable
-		if err := rows.Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File); err != nil {
+		// Parses the current data into fields of "pd" variable
+		if err := rows.Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File, &pd.FileName); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan personal documentation")
 			log.Println("Row scan error:", err)
 			return
@@ -82,7 +99,7 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 
 	// SQL query to select a single personal_documentation
 	query := `
-		SELECT pd.personal_documentation_id, pd.admin_id, a.activity_datetime, d.file
+		SELECT pd.personal_documentation_id, pd.admin_id, a.activity_datetime, d.file, d.file_name
 		FROM personal_documentation pd
 		JOIN activity a ON pd.personal_documentation_id = a.activity_id
 		JOIN documentation d ON pd.personal_documentation_id = d.documentation_id
@@ -93,7 +110,7 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	var pd models.PersonalDocumentation
 
 	// Executes query
-	err = db.QueryRowContext(r.Context(), query, personalDocumentationID).Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File)
+	err = db.QueryRowContext(r.Context(), query, personalDocumentationID).Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File, &pd.FileName)
 
 	// Error message if no rows are found
 	if err == sql.ErrNoRows {
@@ -127,7 +144,7 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	pd.ActivityDateTime = time.Now()
 
 	// Validates required fields
-	if pd.AdminID == 0 || len(pd.File) == 0 {
+	if pd.AdminID == 0 || len(pd.File) == 0 || pd.FileName == "" {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -166,8 +183,8 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Inserts into documentation table
 	_, err = tx.ExecContext(r.Context(),
-		"INSERT INTO documentation (documentation_id, file) VALUES (?, ?)",
-		lastID, pd.File,
+		"INSERT INTO documentation (documentation_id, file, file_name) VALUES (?, ?, ?)",
+		lastID, pd.File, pd.FileName,
 	)
 
 	// Error message if ExecContext fails
@@ -237,7 +254,7 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	pd.ActivityDateTime = time.Now()
 
 	// Validates required fields
-	if pd.AdminID == 0 || len(pd.File) == 0 {
+	if pd.AdminID == 0 || len(pd.File) == 0 || pd.FileName == "" {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -266,8 +283,7 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Executes written SQL to update the documentation data
 	_, err = tx.ExecContext(r.Context(),
-		"UPDATE documentation SET file=? WHERE documentation_id=?",
-		pd.File, personalDocumentationID,
+		"UPDATE documentation SET file=?, file_name=? WHERE documentation_id=?",
 	)
 
 	// Error message if ExecContext fails
@@ -436,5 +452,81 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	// Writes JSON response confirming deletion & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "Personal documentation deleted successfully",
+	})
+}
+
+func DeletePersonalDocumentationByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extract admin_id from route params
+	vars := mux.Vars(r)
+	adminIDStr, ok := vars["admin_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID")
+		return
+	}
+
+	// Converts the "admin_id" string to an integer
+	adminID, err := strconv.Atoi(adminIDStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// Begin a transaction (not strictly required for single multi-table DELETE, but safer)
+	tx, err := db.BeginTx(r.Context(), nil)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
+		log.Println("BeginTx error:", err)
+		return
+	}
+	defer tx.Rollback()
+
+	// Multi-table delete query:
+	// Deletes from personal_documentation, documentation, and activity in one go
+	query := `
+		DELETE pd, d, a
+		FROM personal_documentation pd
+		JOIN documentation d ON d.documentation_id = pd.personal_documentation_id
+		JOIN activity a ON a.activity_id = d.documentation_id
+		WHERE pd.admin_id = ?;
+	`
+
+	// Executes written SQL to delete the documentation
+	res, err := tx.ExecContext(r.Context(), query, adminID)
+
+	// Error message if ExecContext fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete personal documentation")
+		log.Println("Delete query error:", err)
+		return
+	}
+
+	// Gets the number of rows affected by the delete
+	rowsAffected, err := res.RowsAffected()
+
+	// Error message if RowsAffected fails
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
+		log.Println("RowsAffected error:", err)
+		return
+	}
+
+	// Error message if no rows were deleted
+	if rowsAffected == 0 {
+		utils.WriteError(w, http.StatusNotFound, "No personal documentation found for this admin")
+		return
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
+		log.Println("Transaction commit error:", err)
+		return
+	}
+
+	// Respond with success
+	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"message":       "All personal documentation for admin " + adminIDStr + " deleted successfully",
+		"rows_affected": rowsAffected / 3, // Each personal documentation involves 3 rows deleted
 	})
 }

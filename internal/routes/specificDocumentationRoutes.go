@@ -31,6 +31,19 @@ func RegisterSpecificDocumentationRoutes(router *mux.Router, db *sql.DB) {
 		}))),
 	).Methods("GET", "POST", "OPTIONS")
 
+	sdRouter.Handle("/student/{student_id}",
+		utils.RollMiddleware(map[string][]string{
+			"DELETE": {"admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodDelete:
+				handlers.DeleteSpecificDocumentationByStudentID(db, w, r)
+			default:
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			}
+		})),
+	).Methods("DELETE", "OPTIONS")
+
 	sdRouter.Handle(
 		"/{specific_documentation_id}",
 		utils.RollMiddleware(map[string][]string{
@@ -56,16 +69,4 @@ func RegisterSpecificDocumentationRoutes(router *mux.Router, db *sql.DB) {
 			}),
 		)),
 	).Methods("GET", "PUT", "DELETE", "OPTIONS")
-
-	sdRouter.Handle(
-		"/student/{student_id}",
-		utils.RollMiddleware(
-			map[string][]string{
-				"GET": {"student", "admin"},
-			},
-			utils.OwnershipMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				handlers.GetSpecificDocumentationByStudentID(db, w, r)
-			})),
-		),
-	).Methods("GET", "OPTIONS")
 }
