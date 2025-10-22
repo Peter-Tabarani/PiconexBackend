@@ -34,6 +34,19 @@ func RegisterPointOfContactRoutes(router *mux.Router, db *sql.DB) {
 		}))),
 	).Methods("GET", "POST", "DELETE", "OPTIONS")
 
+	pocRouter.Handle("/summary",
+		utils.RollMiddleware(map[string][]string{
+			"GET": {"admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				handlers.GetPointsOfContactSummary(db, w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+		})),
+	).Methods("GET", "OPTIONS")
+
 	pocRouter.Handle(
 		"/past",
 		utils.RollMiddleware(map[string][]string{
