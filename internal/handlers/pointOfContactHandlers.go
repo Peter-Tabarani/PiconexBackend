@@ -446,7 +446,7 @@ func GetPointsOfContactSummary(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	}
 
 	// Order by event time primarily
-	query += " ORDER BY poc.event_datetime DESC, a.activity_datetime DESC"
+	query += " ORDER BY poc.event_datetime ASC"
 
 	rows, err := db.QueryContext(r.Context(), query, args...)
 	if err != nil {
