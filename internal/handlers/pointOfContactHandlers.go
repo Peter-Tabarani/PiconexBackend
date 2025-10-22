@@ -365,6 +365,169 @@ func GetFuturePointsOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request
 	utils.WriteJSON(w, http.StatusOK, pointsOfContact)
 }
 
+func GetPointsOfContactSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Query params
+	dateStr := r.URL.Query().Get("date")
+	tzStr := r.URL.Query().Get("tz")
+	studentIDStr := r.URL.Query().Get("student_id")
+	adminIDStr := r.URL.Query().Get("admin_id")
+
+	// Timezone
+	loc := time.UTC
+	if tzStr != "" {
+		var err error
+		loc, err = time.LoadLocation(tzStr)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Invalid timezone")
+			log.Println("Timezone parse error:", err)
+			return
+		}
+	}
+
+	// Base query: PoC + Activity (for activity_datetime) + Student
+	query := `
+		SELECT
+			poc.point_of_contact_id,
+			a.activity_datetime,
+			poc.event_datetime,
+			poc.duration,
+			poc.event_type,
+			s.student_id,
+			p.first_name,
+			p.preferred_name,
+			p.last_name
+		FROM point_of_contact poc
+		INNER JOIN activity a
+			ON a.activity_id = poc.point_of_contact_id
+		INNER JOIN student s
+			ON s.student_id = poc.student_id
+		INNER JOIN person p
+			ON p.person_id = s.student_id
+	`
+
+	args := []any{}
+	where := []string{}
+
+	// Date filter (NOW on poc.event_datetime, not activity)
+	if dateStr != "" {
+		targetDate, err := time.ParseInLocation("2006-01-02", dateStr, loc)
+		if err != nil {
+			utils.WriteError(w, http.StatusBadRequest, "Invalid date format (expected YYYY-MM-DD)")
+			log.Println("Date parse error:", err)
+			return
+		}
+		start := targetDate
+		end := targetDate.Add(24 * time.Hour)
+		where = append(where, "poc.event_datetime >= ? AND poc.event_datetime < ?")
+		args = append(args, start.UTC(), end.UTC())
+	}
+
+	// Optional student filter
+	if studentIDStr != "" {
+		where = append(where, "poc.student_id = ?")
+		args = append(args, studentIDStr)
+	}
+
+	// Optional admin filter
+	if adminIDStr != "" {
+		where = append(where, `
+			poc.point_of_contact_id IN (
+				SELECT pa.point_of_contact_id
+				FROM poc_admin pa
+				WHERE pa.admin_id = ?
+			)
+		`)
+		args = append(args, adminIDStr)
+	}
+
+	// Combine filters
+	if len(where) > 0 {
+		query += " WHERE " + strings.Join(where, " AND ")
+	}
+
+	// Order by event time primarily
+	query += " ORDER BY poc.event_datetime DESC, a.activity_datetime DESC"
+
+	rows, err := db.QueryContext(r.Context(), query, args...)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch points of contact")
+		log.Println("DB query error:", err)
+		return
+	}
+	defer rows.Close()
+
+	type Person struct {
+		ID            int    `json:"id"`
+		FirstName     string `json:"first_name"`
+		PreferredName string `json:"preferred_name"`
+		LastName      string `json:"last_name"`
+	}
+
+	type PointOfContactSummary struct {
+		PointOfContactID int       `json:"point_of_contact_id"`
+		ActivityDateTime time.Time `json:"activity_datetime"`
+		EventDateTime    time.Time `json:"event_datetime"`
+		Duration         int       `json:"duration"`
+		EventType        string    `json:"event_type"`
+		Student          Person    `json:"student"`
+		Admins           []Person  `json:"admins,omitempty"`
+	}
+
+	results := make([]PointOfContactSummary, 0)
+
+	for rows.Next() {
+		var poc PointOfContactSummary
+		var student Person
+
+		if err := rows.Scan(
+			&poc.PointOfContactID,
+			&poc.ActivityDateTime,
+			&poc.EventDateTime,
+			&poc.Duration,
+			&poc.EventType,
+			&student.ID,
+			&student.FirstName,
+			&student.PreferredName,
+			&student.LastName,
+		); err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse results")
+			log.Println("Row scan error:", err)
+			return
+		}
+
+		poc.Student = student
+
+		// Admins for this PoC
+		adminRows, _ := db.QueryContext(r.Context(), `
+			SELECT p.person_id, p.first_name, p.preferred_name, p.last_name
+			FROM poc_admin pa
+			INNER JOIN admin a ON a.admin_id = pa.admin_id
+			INNER JOIN person p ON p.person_id = a.admin_id
+			WHERE pa.point_of_contact_id = ?
+		`, poc.PointOfContactID)
+
+		admins := []Person{}
+		for adminRows.Next() {
+			var adm Person
+			if err := adminRows.Scan(&adm.ID, &adm.FirstName, &adm.PreferredName, &adm.LastName); err == nil {
+				admins = append(admins, adm)
+			}
+		}
+		adminRows.Close()
+		poc.Admins = admins
+
+		results = append(results, poc)
+	}
+
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Operational error")
+		log.Println("Rows error:", err)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, results)
+}
+
 func CreatePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Empty variable for PointOfContact struct
 	var poc models.PointOfContact

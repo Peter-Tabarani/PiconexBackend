@@ -77,6 +77,6 @@ DeleteStuDis(student_id?: number, disability_id?: number)
 DeleteStuAccom(student_id?: number, accommodation_id?: number)
 DeletePocAdmin(point_of_contact_id?: number, admin_id?: number)
 
-DeletePersonalDocumentationByAdminID(admin_id?: number)
+DeletePersonalDocumentationByAdminID(admin_id: number)
 DeleteSpecificDocumentationByStudentID(student_id: number)
 DeletePointsOfContact(admin_id?: number, student_id?: number)

@@ -197,17 +197,20 @@ func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		ID            int    `json:"id"`
 		FirstName     string `json:"first_name"`
 		PreferredName string `json:"preferred_name"`
+		LastName      string `json:"last_name"`
 	}
 
 	type ActivityData struct {
 		ActivityID       int        `json:"activity_id"`
+		ActivityDateTime time.Time  `json:"activity_datetime"`
 		Type             string     `json:"type"`
-		Student          Person     `json:"student"`
-		Admins           []Person   `json:"admins,omitempty"`
 		DocType          *string    `json:"doc_type,omitempty"`
 		FileName         *string    `json:"file_name,omitempty"`
-		ActivityDateTime time.Time  `json:"activity_datetime"`
 		EventDateTime    *time.Time `json:"event_datetime,omitempty"`
+		Duration         *int       `json:"duration"`
+		EventType        *string    `json:"event_type"`
+		Student          Person     `json:"student"`
+		Admins           []Person   `json:"admins,omitempty"`
 	}
 
 	// Creates an empty slice to store results
@@ -228,26 +231,28 @@ func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 			PointOfContactID int
 			StudentID        int
 			EventDateTime    time.Time
+			Duration         int
+			EventType        string
 		}
 		err = db.QueryRowContext(r.Context(), `
-			SELECT point_of_contact_id, student_id, event_datetime
+			SELECT point_of_contact_id, student_id, event_datetime, duration, event_type
 			FROM point_of_contact
 			WHERE point_of_contact_id = ?
-		`, a.ActivityID).Scan(&poc.PointOfContactID, &poc.StudentID, &poc.EventDateTime)
+		`, a.ActivityID).Scan(&poc.PointOfContactID, &poc.StudentID, &poc.EventDateTime, &poc.Duration, &poc.EventType)
 
 		// Found: Point of Contact type
 		if err == nil {
 			var student Person
 			if err := db.QueryRowContext(r.Context(), `
-				SELECT person_id, first_name, preferred_name
+				SELECT person_id, first_name, preferred_name, last_name
 				FROM person
 				WHERE person_id = ?
-			`, poc.StudentID).Scan(&student.ID, &student.FirstName, &student.PreferredName); err != nil {
+			`, poc.StudentID).Scan(&student.ID, &student.FirstName, &student.PreferredName, &student.LastName); err != nil {
 				log.Println("Student query error:", err)
 			}
 
 			adminRows, _ := db.QueryContext(r.Context(), `
-				SELECT p.person_id, p.first_name, p.preferred_name
+				SELECT p.person_id, p.first_name, p.preferred_name, p.last_name
 				FROM admin a
 				INNER JOIN person p ON a.admin_id = p.person_id
 				INNER JOIN poc_admin pa ON pa.admin_id = a.admin_id
@@ -257,7 +262,7 @@ func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 			admins := []Person{}
 			for adminRows.Next() {
 				var adm Person
-				if err := adminRows.Scan(&adm.ID, &adm.FirstName, &adm.PreferredName); err == nil {
+				if err := adminRows.Scan(&adm.ID, &adm.FirstName, &adm.PreferredName, &adm.LastName); err == nil {
 					admins = append(admins, adm)
 				}
 			}
@@ -267,6 +272,8 @@ func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 			a.Student = student
 			a.Admins = admins
 			a.EventDateTime = &poc.EventDateTime
+			a.Duration = &poc.Duration
+			a.EventType = &poc.EventType
 			activities = append(activities, a)
 			continue
 		}
@@ -287,10 +294,10 @@ func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			var student Person
 			if err := db.QueryRowContext(r.Context(), `
-				SELECT person_id, first_name, preferred_name
+				SELECT person_id, first_name, preferred_name, last_name
 				FROM person
 				WHERE person_id = ?
-			`, doc.StudentID).Scan(&student.ID, &student.FirstName, &student.PreferredName); err != nil {
+			`, doc.StudentID).Scan(&student.ID, &student.FirstName, &student.PreferredName, &student.LastName); err != nil {
 				log.Println("Student query error:", err)
 			}
 
