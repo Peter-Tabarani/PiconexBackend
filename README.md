@@ -40,7 +40,7 @@ curl -X POST http://localhost:8080/point-of-contact \
 "student_id": 15
 }'
 
-curl -X GET http://localhost:8080/point-of-contact/summary \
+curl -X GET http://178.156.189.138:8080/point-of-contact/summary \
  -H "Authorization: Bearer superkey"
 
 curl -X DELETE http://localhost:8080/point-of-contact/student/42 \
@@ -52,12 +52,20 @@ curl -X DELETE http://localhost:8080/point-of-contact?student_id=122 \
 curl -X DELETE http://localhost:8080/admin/127 \
  -H "Authorization: Bearer superkey"
 
-curl -X POST http://localhost:8080/personal-documentation \
+curl -X POST http://178.156.189.138:8080/personal-documentation \
  -H "Content-Type: application/json" \
  -H "Authorization: Bearer superkey" \
  -d '{
 "admin_id": 127,
 "file": ""
+}'
+
+curl -X POST http://178.156.189.138:8080/poc-admin \
+ -H "Content-Type: application/json" \
+ -H "Authorization: Bearer superkey" \
+ -d '{
+"point_of_contact_id": 300,
+"admin_id": 5
 }'
 
 curl -X POST http://localhost:8080/poc-admin \
