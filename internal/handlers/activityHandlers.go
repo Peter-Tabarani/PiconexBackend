@@ -207,8 +207,8 @@ func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		DocType          *string    `json:"doc_type,omitempty"`
 		FileName         *string    `json:"file_name,omitempty"`
 		EventDateTime    *time.Time `json:"event_datetime,omitempty"`
-		Duration         *int       `json:"duration"`
-		EventType        *string    `json:"event_type"`
+		Duration         *int       `json:"duration,omitempty"`
+		EventType        *string    `json:"event_type,omitempty"`
 		Student          Person     `json:"student"`
 		Admins           []Person   `json:"admins,omitempty"`
 	}
@@ -283,12 +283,18 @@ func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 			ID        int
 			StudentID int
 			DocType   string
+			FileName  string
 		}
 		err = db.QueryRowContext(r.Context(), `
-			SELECT specific_documentation_id, student_id, doc_type
-			FROM specific_documentation
-			WHERE specific_documentation_id = ?
-		`, a.ActivityID).Scan(&doc.ID, &doc.StudentID, &doc.DocType)
+			SELECT sd.specific_documentation_id,
+				sd.student_id,
+				sd.doc_type,
+				d.file_name
+			FROM specific_documentation sd
+			INNER JOIN documentation d
+				ON d.documentation_id = sd.specific_documentation_id
+			WHERE sd.specific_documentation_id = ?
+		`, a.ActivityID).Scan(&doc.ID, &doc.StudentID, &doc.DocType, &doc.FileName)
 
 		// Found: Specific Documentation type
 		if err == nil {
@@ -304,6 +310,7 @@ func GetActivitiesSummary(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 			a.Type = "specific_documentation"
 			a.Student = student
 			a.DocType = &doc.DocType
+			a.FileName = &doc.FileName
 			activities = append(activities, a)
 		}
 	}
