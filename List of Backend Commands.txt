@@ -45,6 +45,7 @@ SpecificDocumentation getSpecificDocumentationByID(specific_documentation_id: nu
 PointofContact getPointofContactByID(point_of_contact_id: number)
 Disability getDisabilityByID(disability_id: number)
 Accommodation getAccommodationByID(accommodation_id: number)
+boolean getPin(admin_id: number, student_id: number)
 
 **CREATE COMMANDS**
 CreateStudent(student_id: number)
