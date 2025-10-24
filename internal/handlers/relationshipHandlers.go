@@ -60,6 +60,57 @@ func GetPinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, pinnedList)
 }
 
+func GetPin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extracts path variables from the request
+	vars := mux.Vars(r)
+	adminIDStr, ok := vars["admin_id"]
+	studentIDStr, ok2 := vars["student_id"]
+	if !ok || !ok2 {
+		utils.WriteError(w, http.StatusBadRequest, "Missing admin ID or student ID")
+		return
+	}
+
+	// Converts the "admin_id" string to an integer
+	adminID, err := strconv.Atoi(adminIDStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// Converts the "student_id" string to an integer
+	studentID, err := strconv.Atoi(studentIDStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	query := `
+		SELECT 1
+		FROM pinned
+		WHERE admin_id = ? AND student_id = ?
+		LIMIT 1
+	`
+	// Executes written SQL
+	var exists bool
+	err = db.QueryRowContext(r.Context(), query, adminID, studentID).Scan(&exists)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Pin not found → false
+			json.NewEncoder(w).Encode(false)
+			return
+		}
+		utils.WriteError(w, http.StatusInternalServerError, "Database query error")
+		log.Println("DB query error:", err)
+		return
+	}
+
+	// If a row was found, exists = true
+	json.NewEncoder(w).Encode(true)
+
+}
+
 func GetPinnedByAdminID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
