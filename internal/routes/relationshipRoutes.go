@@ -33,6 +33,19 @@ func RegisterRelationshipRoutes(router *mux.Router, db *sql.DB) {
 		})),
 	).Methods("GET", "POST", "DELETE", "OPTIONS")
 
+	pinnedRouter.Handle("/admin/{admin_id}",
+		utils.RollMiddleware(map[string][]string{
+			"GET": {"admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				handlers.GetPinnedByAdminID(db, w, r)
+			default:
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			}
+		})),
+	).Methods("GET", "OPTIONS")
+
 	pinnedRouter.Handle("/{admin_id}/{student_id}",
 		utils.RollMiddleware(map[string][]string{
 			"GET":    {"admin"},
@@ -42,19 +55,6 @@ func RegisterRelationshipRoutes(router *mux.Router, db *sql.DB) {
 			switch r.Method {
 			case http.MethodGet:
 				handlers.GetPin(db, w, r)
-			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			}
-		})),
-	).Methods("GET", "OPTIONS")
-
-	pinnedRouter.Handle("/admin/{admin_id}",
-		utils.RollMiddleware(map[string][]string{
-			"GET": {"admin"},
-		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				handlers.GetPinnedByAdminID(db, w, r)
 			default:
 				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			}
