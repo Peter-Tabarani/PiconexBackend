@@ -390,7 +390,7 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Start transaction
+	// Begin a transaction (not strictly required for single multi-table DELETE, but safer)
 	tx, err := db.BeginTx(r.Context(), nil)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
@@ -399,11 +399,17 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	// Executes SQL to delete from student
-	res, err := tx.ExecContext(r.Context(),
-		"DELETE FROM student WHERE student_id = ?",
-		studentID,
-	)
+	// Multi-table delete query:
+	// Deletes from student and person in one go
+	query := `
+		DELETE s, p
+		FROM student s
+		JOIN person p ON p.person_id = s.student_id
+		WHERE s.student_id = ?;
+	`
+
+	// Executes written SQL to delete the student
+	res, err := tx.ExecContext(r.Context(), query, studentID)
 
 	// Error message if ExecContext fails
 	if err != nil {
@@ -424,33 +430,7 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Error message if no rows were deleted
 	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "Student not found")
-		return
-	}
-
-	// Executes SQL to delete from person
-	res, err = tx.ExecContext(r.Context(), "DELETE FROM person WHERE person_id = ?", studentID)
-
-	// Error message if ExecContext fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete person")
-		log.Println("DB delete person error:", err)
-		return
-	}
-
-	// Gets the number of rows affected by the delete
-	rowsAffected, err = res.RowsAffected()
-
-	// Error message if RowsAffected fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected for person")
-		log.Println("RowsAffected person error:", err)
-		return
-	}
-
-	// Error message if no rows were deleted
-	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "Person not found")
+		utils.WriteError(w, http.StatusNotFound, "No student found for this ID")
 		return
 	}
 
@@ -461,8 +441,9 @@ func DeleteStudent(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Writes JSON response confirming deletion
-	utils.WriteJSON(w, http.StatusOK, map[string]string{
-		"message": "Student deleted successfully",
+	// Respond with success
+	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"message":       "Student " + idStr + " deleted successfully",
+		"rows_affected": rowsAffected / 2, // Each student involves 2 rows deleted
 	})
 }

@@ -360,7 +360,7 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Start transaction
+	// Begin a transaction (not strictly required for single multi-table DELETE, but safer)
 	tx, err := db.BeginTx(r.Context(), nil)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
@@ -369,11 +369,16 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	// Executes SQL to delete from admin
-	res, err := tx.ExecContext(r.Context(),
-		"DELETE FROM admin WHERE admin_id = ?",
-		adminID,
-	)
+	// Multi-table delete query:
+	// Deletes from admin and person in one go
+	query := `
+		DELETE a, p
+		FROM admin a
+		JOIN person p ON p.person_id = a.admin_id
+		WHERE a.admin_id = ?;
+	`
+	// Executes written SQL to delete the admin
+	res, err := tx.ExecContext(r.Context(), query, adminID)
 
 	// Error message if ExecContext fails
 	if err != nil {
@@ -382,7 +387,7 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Gets the number of rows affected
+	// Gets the number of rows affected by the delete
 	rowsAffected, err := res.RowsAffected()
 
 	// Error message if RowsAffected fails
@@ -394,33 +399,7 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Error message if no rows were deleted
 	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "Admin not found")
-		return
-	}
-
-	// Executes SQL to delete from person
-	res, err = tx.ExecContext(r.Context(), "DELETE FROM person WHERE person_id = ?", adminID)
-
-	// Error message if ExecContext fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete person")
-		log.Println("DB delete person error:", err)
-		return
-	}
-
-	// Gets the number of rows affected for person
-	rowsAffected, err = res.RowsAffected()
-
-	// Error message if RowsAffected fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected for person")
-		log.Println("RowsAffected person error:", err)
-		return
-	}
-
-	// Error message if no rows were deleted
-	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "Person not found")
+		utils.WriteError(w, http.StatusNotFound, "No admin found for this ID")
 		return
 	}
 
@@ -431,8 +410,9 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Writes JSON response confirming deletion
-	utils.WriteJSON(w, http.StatusOK, map[string]string{
-		"message": "Admin deleted successfully",
+	// Respond with success
+	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"message":       "Admin " + idStr + " deleted successfully",
+		"rows_affected": rowsAffected / 2, // Each admin involves 2 rows deleted
 	})
 }

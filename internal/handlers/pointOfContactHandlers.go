@@ -726,7 +726,7 @@ func DeletePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Start transaction
+	// Begin a transaction (not strictly required for single multi-table DELETE, but safer)
 	tx, err := db.BeginTx(r.Context(), nil)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
@@ -735,11 +735,17 @@ func DeletePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
-	// Executes SQL to delete from point of contact
-	res, err := tx.ExecContext(r.Context(),
-		"DELETE FROM point_of_contact WHERE point_of_contact_id = ?",
-		pointOfContactID,
-	)
+	// Multi-table delete query:
+	// Deletes from point_of_contact and activity in one go
+	query := `
+		DELETE poc, a
+		FROM point_of_contact poc
+		JOIN activity a ON a.activity_id = poc.point_of_contact_id
+		WHERE poc.point_of_contact_id = ?;
+	`
+
+	// Executes written SQL to delete the student
+	res, err := tx.ExecContext(r.Context(), query, pointOfContactID)
 
 	// Error message if ExecContext fails
 	if err != nil {
@@ -760,34 +766,7 @@ func DeletePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// Error message if no rows were deleted
 	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "Point of contact not found")
-		return
-	}
-
-	// Executes written SQL to delete the point of contact
-	res, err = tx.ExecContext(r.Context(),
-		"DELETE FROM activity WHERE activity_id = ?", pointOfContactID)
-
-	// Error message if ExecContext fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete activity")
-		log.Println("DB delete error:", err)
-		return
-	}
-
-	// Gets the number of rows affected by the delete
-	rowsAffected, err = res.RowsAffected()
-
-	// Error message if RowsAffected fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
-		log.Println("RowsAffected error:", err)
-		return
-	}
-
-	// Error message if no rows were deleted
-	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "Activity not found")
+		utils.WriteError(w, http.StatusNotFound, "No point of contact found for this ID")
 		return
 	}
 
@@ -798,9 +777,10 @@ func DeletePointOfContact(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Writes JSON response confirming deletion & sends a HTTP 200 response code
-	utils.WriteJSON(w, http.StatusOK, map[string]string{
-		"message": "Point of Contact deleted successfully",
+	// Respond with success
+	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"message":       "Point of contact " + pointOfContactIDStr + " deleted successfully",
+		"rows_affected": rowsAffected / 2, // Each point of contact involves 2 rows deleted
 	})
 }
 

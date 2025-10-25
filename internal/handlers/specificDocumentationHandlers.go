@@ -350,7 +350,7 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Start transaction
+	// Begin a transaction (not strictly required for single multi-table DELETE, but safer)
 	tx, err := db.BeginTx(r.Context(), nil)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
@@ -359,9 +359,18 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 	defer tx.Rollback()
 
+	// Multi-table delete query:
+	// Deletes from specific_documentation, documentation, and activity in one go
+	query := `
+		DELETE sd, d, a
+		FROM specific_documentation sd
+		JOIN documentation d ON d.documentation_id = sd.specific_documentation_id
+		JOIN activity a ON a.activity_id = d.documentation_id
+		WHERE sd.specific_documentation_id = ?;
+	`
+
 	// Executes written SQL to delete the specific documentation
-	res, err := tx.ExecContext(r.Context(),
-		"DELETE FROM specific_documentation WHERE specific_documentation_id = ?", specificDocumentationID)
+	res, err := tx.ExecContext(r.Context(), query, specificDocumentationID)
 
 	// Error message if ExecContext fails
 	if err != nil {
@@ -382,61 +391,7 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Error message if no rows were deleted
 	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "Specific documentation not found")
-		return
-	}
-
-	// Executes written SQL to delete the documentation
-	res, err = tx.ExecContext(r.Context(),
-		"DELETE FROM documentation WHERE documentation_id = ?", specificDocumentationID)
-
-	// Error message if ExecContext fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete documentation")
-		log.Println("DB delete error:", err)
-		return
-	}
-
-	// Gets the number of rows affected by the delete
-	rowsAffected, err = res.RowsAffected()
-
-	// Error message if RowsAffected fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
-		log.Println("RowsAffected error:", err)
-		return
-	}
-
-	// Error message if no rows were deleted
-	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "Documentation not found")
-		return
-	}
-
-	// Executes written SQL to delete the activity
-	res, err = tx.ExecContext(r.Context(),
-		"DELETE FROM activity WHERE activity_id = ?", specificDocumentationID)
-
-	// Error message if ExecContext fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to delete activity")
-		log.Println("DB delete activity error:", err)
-		return
-	}
-
-	// Gets the number of rows affected by the delete
-	rowsAffected, err = res.RowsAffected()
-
-	// Error message if RowsAffected fails
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to get rows affected")
-		log.Println("RowsAffected error:", err)
-		return
-	}
-
-	// Error message if no rows were deleted
-	if rowsAffected == 0 {
-		utils.WriteError(w, http.StatusNotFound, "Activity not found")
+		utils.WriteError(w, http.StatusNotFound, "No specific documentation found for this ID")
 		return
 	}
 
@@ -447,9 +402,10 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Writes JSON response & sends a HTTP 200 response code
-	utils.WriteJSON(w, http.StatusOK, map[string]string{
-		"message": "Specific documentation deleted successfully",
+	// Respond with success
+	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"message":       "All specific documentation for student " + idStr + " deleted successfully",
+		"rows_affected": rowsAffected / 3, // Each specific documentation involves 3 rows deleted
 	})
 }
 
