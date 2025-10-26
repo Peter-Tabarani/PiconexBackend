@@ -404,7 +404,7 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Respond with success
 	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
-		"message":       "All specific documentation for student " + idStr + " deleted successfully",
+		"message":       "Specific documentation " + idStr + " deleted successfully",
 		"rows_affected": rowsAffected / 3, // Each specific documentation involves 3 rows deleted
 	})
 }

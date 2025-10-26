@@ -372,8 +372,9 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Multi-table delete query:
 	// Deletes from admin and person in one go
 	query := `
-		DELETE a, p
+		DELETE a, u, p
 		FROM admin a
+		JOIN users u ON u.id = a.admin_id
 		JOIN person p ON p.person_id = a.admin_id
 		WHERE a.admin_id = ?;
 	`
@@ -413,6 +414,6 @@ func DeleteAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Respond with success
 	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
 		"message":       "Admin " + idStr + " deleted successfully",
-		"rows_affected": rowsAffected / 2, // Each admin involves 2 rows deleted
+		"rows_affected": rowsAffected / 3, // Each admin involves 3 rows deleted
 	})
 }
