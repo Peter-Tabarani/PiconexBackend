@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -165,28 +167,74 @@ func GetSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 }
 
 func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
-	// Empty variable for specific_documentation struct
-	var sd models.SpecificDocumentation
-
-	// Decodes JSON body from the request into "sd" variable
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields() // Prevents extra unexpected fields
-	if err := decoder.Decode(&sd); err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Invalid JSON body")
-		log.Println("JSON decode error:", err)
+	// Parses multipart form data from the request with a maximum upload size of 20MB
+	err := r.ParseMultipartForm(20 << 20)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Failed to parse form data")
+		log.Println("Form parse error:", err)
 		return
 	}
 
-	// Automatically set activity_datetime to now
-	sd.ActivityDateTime = time.Now()
+	// Extracts "student_id" and "doc_type" fields from the multipart form
+	studentIDStr := r.FormValue("student_id")
+	docType := r.FormValue("doc_type")
 
-	// Validates required fields
-	if sd.StudentID == 0 || sd.DocType == "" || sd.FileName == "" || sd.FilePath == "" || sd.MimeType == "" || sd.SizeBytes == 0 {
-		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
+	// Validates required form fields
+	if studentIDStr == "" || docType == "" {
+		utils.WriteError(w, http.StatusBadRequest, "Missing student_id or doc_type")
 		return
 	}
 
-	// Start transaction
+	// Converts "student_id" string to an integer
+	studentID, err := strconv.Atoi(studentIDStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid student ID")
+		log.Println("Invalid student ID parse error:", err)
+		return
+	}
+
+	// Retrieves the uploaded file from the form
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Missing file in request")
+		log.Println("Form file error:", err)
+		return
+	}
+	defer file.Close()
+
+	// Defines file storage directory and constructs a unique filename
+	dstDir := "/home/piconex/database/files/specific"
+	if err := os.MkdirAll(dstDir, 0755); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to ensure specific folder")
+		log.Println("MkdirAll error:", err)
+		return
+	}
+	fullPath := filepath.Join(dstDir, header.Filename)
+
+	// Creates a new file at the destination path
+	dst, err := os.Create(fullPath)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to create file on server")
+		log.Println("File create error:", err)
+		return
+	}
+	defer dst.Close()
+
+	// Copies the uploaded file content into the newly created file
+	sizeBytes, err := io.Copy(dst, file)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to save uploaded file")
+		log.Println("File write error:", err)
+		return
+	}
+
+	// Detects the file's MIME type from the uploaded header
+	mimeType := header.Header.Get("Content-Type")
+	if mimeType == "" {
+		mimeType = "application/octet-stream"
+	}
+
+	// Begins a new database transaction
 	tx, err := db.BeginTx(r.Context(), nil)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to begin transaction")
@@ -195,66 +243,48 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 	defer tx.Rollback()
 
-	// Executes SQL to insert into activity table
-	res, err := tx.ExecContext(r.Context(),
-		"INSERT INTO activity (activity_datetime) VALUES (?)",
-		sd.ActivityDateTime,
-	)
-
-	// Error message if ExecContext fails
+	// Inserts a new activity record with the current timestamp
+	now := time.Now()
+	res, err := tx.ExecContext(r.Context(), "INSERT INTO activity (activity_datetime) VALUES (?)", now)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert activity")
-		log.Println("DB insert error:", err)
+		log.Println("Insert activity error:", err)
 		return
 	}
 
-	// Gets the last inserted activity_id
-	lastID, err := res.LastInsertId()
+	// Retrieves the automatically generated activity_id from the database
+	activityID, err := res.LastInsertId()
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to get inserted activity ID")
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve inserted activity ID")
 		log.Println("LastInsertId error:", err)
 		return
 	}
 
-	// Inserts into documentation table
+	// Inserts a new record into the documentation table with file metadata
 	_, err = tx.ExecContext(r.Context(),
-		`INSERT INTO documentation (
-			documentation_id,
-			file_name,
-			file_path,
-			mime_type,
-			size_bytes,
-			uploaded_by
-		) VALUES (?, ?, ?, ?, ?, ?)`,
-		lastID,
-		sd.FileName,
-		sd.FilePath,
-		sd.MimeType,
-		sd.SizeBytes,
-		sd.UploadedBy,
+		`INSERT INTO documentation (documentation_id, file_name, file_path, mime_type, size_bytes, uploaded_by)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		activityID, header.Filename, fullPath, mimeType, sizeBytes, 5, // uploaded_by temporarily set to 5
 	)
-
-	// Error message if ExecContext fails
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert documentation")
-		log.Println("DB insert error:", err)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert documentation metadata")
+		log.Println("Insert documentation error:", err)
 		return
 	}
 
-	// Inserts into specific_documentation table
+	// Inserts a new record into the specific_documentation table linking the student and doc_type
 	_, err = tx.ExecContext(r.Context(),
-		"INSERT INTO specific_documentation (specific_documentation_id, student_id, doc_type) VALUES (?, ?, ?)",
-		lastID, sd.StudentID, sd.DocType,
+		`INSERT INTO specific_documentation (specific_documentation_id, student_id, doc_type)
+		 VALUES (?, ?, ?)`,
+		activityID, studentID, docType,
 	)
-
-	// Error message if ExecContext fails
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert specific documentation")
-		log.Println("DB insert error:", err)
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert specific documentation entry")
+		log.Println("Insert specific documentation error:", err)
 		return
 	}
 
-	// Commit transaction
+	// Commits the transaction to finalize the database changes
 	if err := tx.Commit(); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to commit transaction")
 		log.Println("Transaction commit error:", err)
@@ -263,8 +293,10 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Writes JSON response & sends a HTTP 201 response code
 	utils.WriteJSON(w, http.StatusCreated, map[string]interface{}{
-		"message":                   "Specific documentation created successfully",
-		"specific_documentation_id": lastID,
+		"message": "Specific documentation uploaded successfully",
+		"id":      activityID,
+		"path":    fullPath,
+		"size":    sizeBytes,
 	})
 }
 
