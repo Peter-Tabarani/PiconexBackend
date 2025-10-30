@@ -43,6 +43,19 @@ func RegisterPersonalDocumentationRoutes(router *mux.Router, db *sql.DB) {
 		})),
 	).Methods("DELETE", "OPTIONS")
 
+	pdRouter.Handle("/{personal_documentation_id}/download",
+		utils.RollMiddleware(map[string][]string{
+			"GET": {"admin"},
+		}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				handlers.DownloadPersonalDocumentation(db, w, r)
+			default:
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			}
+		})),
+	).Methods("GET", "OPTIONS")
+
 	pdRouter.Handle("/{personal_documentation_id}",
 		utils.RollMiddleware(map[string][]string{
 			"GET":    {"admin"},

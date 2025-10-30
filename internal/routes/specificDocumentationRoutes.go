@@ -45,6 +45,26 @@ func RegisterSpecificDocumentationRoutes(router *mux.Router, db *sql.DB) {
 	).Methods("DELETE", "OPTIONS")
 
 	sdRouter.Handle(
+		"/{specific_documentation_id}/download",
+		utils.RollMiddleware(map[string][]string{
+			"GET": {"student", "admin"},
+		}, utils.ResourceOwnershipMiddleware(
+			db,
+			"specific_documentation",
+			"specific_documentation_id",
+			"student_id",
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.Method {
+				case http.MethodGet:
+					handlers.DownloadSpecificDocumentation(db, w, r)
+				default:
+					utils.WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+				}
+			}),
+		)),
+	).Methods("GET", "OPTIONS")
+
+	sdRouter.Handle(
 		"/{specific_documentation_id}",
 		utils.RollMiddleware(map[string][]string{
 			"GET":    {"student", "admin"},

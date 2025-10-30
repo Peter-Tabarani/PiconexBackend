@@ -20,9 +20,7 @@ func main() {
 	defer db.Close()
 
 	// --- Put any SQL query you want here ---
-	query := `
-ALTER TABLE documentation
-MODIFY COLUMN file_name VARCHAR(255) NOT NULL;;
+	query := `SELECT * from documentation;
 `
 	// Decide if it's a query (returns rows) or command (update/insert)
 	// We'll try Query first, then fallback to Exec if no rows returned

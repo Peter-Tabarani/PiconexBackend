@@ -3,8 +3,10 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -22,7 +24,14 @@ func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	// Base SQL query for retrieving personal documentation
 	query := `
 		SELECT
-			pd.personal_documentation_id, pd.admin_id, a.activity_datetime, d.file, d.file_name
+			pd.personal_documentation_id,
+			pd.admin_id,
+			a.activity_datetime,
+			d.file_name,
+			d.file_path,
+			d.mime_type,
+			d.size_bytes,
+			d.uploaded_by
 		FROM personal_documentation pd
 		JOIN activity a ON pd.personal_documentation_id = a.activity_id
 		JOIN documentation d ON pd.personal_documentation_id = d.documentation_id
@@ -60,7 +69,16 @@ func GetPersonalDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	for rows.Next() {
 		var pd models.PersonalDocumentation
 		// Parses the current data into fields of "pd" variable
-		if err := rows.Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File, &pd.FileName); err != nil {
+		if err := rows.Scan(
+			&pd.PersonalDocumentationID,
+			&pd.AdminID,
+			&pd.ActivityDateTime,
+			&pd.FileName,
+			&pd.FilePath,
+			&pd.MimeType,
+			&pd.SizeBytes,
+			&pd.UploadedBy,
+		); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan personal documentation")
 			log.Println("Row scan error:", err)
 			return
@@ -99,7 +117,15 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 
 	// SQL query to select a single personal_documentation
 	query := `
-		SELECT pd.personal_documentation_id, pd.admin_id, a.activity_datetime, d.file, d.file_name
+		SELECT
+			pd.personal_documentation_id,
+			pd.admin_id,
+			a.activity_datetime,
+			d.file_name,
+			d.file_path,
+			d.mime_type,
+			d.size_bytes,
+			d.uploaded_by
 		FROM personal_documentation pd
 		JOIN activity a ON pd.personal_documentation_id = a.activity_id
 		JOIN documentation d ON pd.personal_documentation_id = d.documentation_id
@@ -110,8 +136,16 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	var pd models.PersonalDocumentation
 
 	// Executes query
-	err = db.QueryRowContext(r.Context(), query, personalDocumentationID).Scan(&pd.PersonalDocumentationID, &pd.AdminID, &pd.ActivityDateTime, &pd.File, &pd.FileName)
-
+	err = db.QueryRowContext(r.Context(), query, personalDocumentationID).Scan(
+		&pd.PersonalDocumentationID,
+		&pd.AdminID,
+		&pd.ActivityDateTime,
+		&pd.FileName,
+		&pd.FilePath,
+		&pd.MimeType,
+		&pd.SizeBytes,
+		&pd.UploadedBy,
+	)
 	// Error message if no rows are found
 	if err == sql.ErrNoRows {
 		utils.WriteError(w, http.StatusNotFound, "Personal documentation not found")
@@ -125,6 +159,71 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 
 	// Writes JSON response & sends a HTTP 200 response code
 	utils.WriteJSON(w, http.StatusOK, pd)
+}
+
+func DownloadPersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extracts personal_documentation_id from URL path parameters
+	vars := mux.Vars(r)
+	idStr := vars["personal_documentation_id"]
+
+	// Converts "personal_documentation_id" string to integer
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid personal_documentation_id")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// SQL query to retrieve the full documentation record
+	query := `
+		SELECT
+			pd.personal_documentation_id,
+			pd.admin_id,
+			a.activity_datetime,
+			d.file_name,
+			d.file_path,
+			d.mime_type,
+			d.size_bytes,
+			d.uploaded_by
+		FROM personal_documentation pd
+		JOIN activity a ON pd.personal_documentation_id = a.activity_id
+		JOIN documentation d ON pd.personal_documentation_id = d.documentation_id
+		WHERE pd.personal_documentation_id = ?
+	`
+
+	// Creates an empty struct to store result
+	var pd models.PersonalDocumentation
+
+	// Executes the SQL query
+	err = db.QueryRowContext(r.Context(), query, id).Scan(
+		&pd.PersonalDocumentationID,
+		&pd.AdminID,
+		&pd.ActivityDateTime,
+		&pd.FileName,
+		&pd.FilePath,
+		&pd.MimeType,
+		&pd.SizeBytes,
+		&pd.UploadedBy,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			utils.WriteError(w, http.StatusNotFound, "File not found")
+			return
+		}
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain documentation info")
+		log.Println("DB query error:", err)
+		return
+	}
+
+	// Clean and resolve full file path
+	fullPath := filepath.Clean(pd.FilePath)
+
+	// Sets headers for file download
+	w.Header().Set("Content-Type", pd.MimeType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", pd.FileName))
+
+	// Streams the file to the HTTP response
+	http.ServeFile(w, r, fullPath)
 }
 
 func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
@@ -144,7 +243,7 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	pd.ActivityDateTime = time.Now()
 
 	// Validates required fields
-	if pd.AdminID == 0 || len(pd.File) == 0 || pd.FileName == "" {
+	if pd.AdminID == 0 || pd.FileName == "" || pd.FilePath == "" || pd.MimeType == "" || pd.SizeBytes == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -183,10 +282,21 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Inserts into documentation table
 	_, err = tx.ExecContext(r.Context(),
-		"INSERT INTO documentation (documentation_id, file, file_name) VALUES (?, ?, ?)",
-		lastID, pd.File, pd.FileName,
+		`INSERT INTO documentation (
+			documentation_id,
+			file_name,
+			file_path,
+			mime_type,
+			size_bytes,
+			uploaded_by
+		) VALUES (?, ?, ?, ?, ?, ?)`,
+		lastID,
+		pd.FileName,
+		pd.FilePath,
+		pd.MimeType,
+		pd.SizeBytes,
+		pd.UploadedBy,
 	)
-
 	// Error message if ExecContext fails
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to insert documentation")
@@ -254,7 +364,7 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	pd.ActivityDateTime = time.Now()
 
 	// Validates required fields
-	if pd.AdminID == 0 || len(pd.File) == 0 || pd.FileName == "" {
+	if pd.AdminID == 0 || pd.FileName == "" || pd.FilePath == "" || pd.MimeType == "" || pd.SizeBytes == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -281,9 +391,11 @@ func UpdatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Executes written SQL to update the documentation data
 	_, err = tx.ExecContext(r.Context(),
-		"UPDATE documentation SET file=?, file_name=? WHERE documentation_id=?",
+		`UPDATE documentation
+		SET file_name=?, file_path=?, mime_type=?, size_bytes=?, uploaded_by=?
+		WHERE documentation_id=?`,
+		pd.FileName, pd.FilePath, pd.MimeType, pd.SizeBytes, pd.UploadedBy, personalDocumentationID,
 	)
 
 	// Error message if ExecContext fails

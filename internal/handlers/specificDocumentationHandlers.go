@@ -3,8 +3,10 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -22,7 +24,15 @@ func GetSpecificDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	// Base SQL query for retrieving specific documentation
 	query := `
 		SELECT
-			sd.specific_documentation_id, sd.student_id, sd.doc_type, a.activity_datetime, d.file, d.file_name
+			sd.specific_documentation_id,
+			sd.student_id,
+			sd.doc_type,
+			a.activity_datetime,
+			d.file_name,
+			d.file_path,
+			d.mime_type,
+			d.size_bytes,
+			d.uploaded_by
 		FROM specific_documentation sd
 		JOIN activity a ON sd.specific_documentation_id = a.activity_id
 		JOIN documentation d ON sd.specific_documentation_id = d.documentation_id
@@ -59,7 +69,17 @@ func GetSpecificDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Reques
 	for rows.Next() {
 		var sd models.SpecificDocumentation
 		// Parses the current data into fields of "sd" variable
-		if err := rows.Scan(&sd.SpecificDocumentationID, &sd.StudentID, &sd.DocType, &sd.ActivityDateTime, &sd.File, &sd.FileName); err != nil {
+		if err := rows.Scan(
+			&sd.SpecificDocumentationID,
+			&sd.StudentID,
+			&sd.DocType,
+			&sd.ActivityDateTime,
+			&sd.FileName,
+			&sd.FilePath,
+			&sd.MimeType,
+			&sd.SizeBytes,
+			&sd.UploadedBy,
+		); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to scan specific documentation")
 			log.Println("Row scan error:", err)
 			return
@@ -98,7 +118,16 @@ func GetSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 
 	// SQL query to select a single specific_documentation
 	query := `
-		SELECT sd.specific_documentation_id, sd.student_id, sd.doc_type, a.activity_datetime, d.file, d.file_name
+		SELECT
+			sd.specific_documentation_id,
+			sd.student_id,
+			sd.doc_type,
+			a.activity_datetime,
+			d.file_name,
+			d.file_path,
+			d.mime_type,
+			d.size_bytes,
+			d.uploaded_by
 		FROM specific_documentation sd
 		JOIN activity a ON sd.specific_documentation_id = a.activity_id
 		JOIN documentation d ON sd.specific_documentation_id = d.documentation_id
@@ -109,8 +138,17 @@ func GetSpecificDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 	var sd models.SpecificDocumentation
 
 	// Executes query
-	err = db.QueryRowContext(r.Context(), query, specificDocumentationID).Scan(&sd.SpecificDocumentationID, &sd.StudentID, &sd.DocType, &sd.ActivityDateTime, &sd.File, &sd.FileName)
-
+	err = db.QueryRowContext(r.Context(), query, specificDocumentationID).Scan(
+		&sd.SpecificDocumentationID,
+		&sd.StudentID,
+		&sd.DocType,
+		&sd.ActivityDateTime,
+		&sd.FileName,
+		&sd.FilePath,
+		&sd.MimeType,
+		&sd.SizeBytes,
+		&sd.UploadedBy,
+	)
 	// Error message if no rows are found
 	if err == sql.ErrNoRows {
 		utils.WriteError(w, http.StatusNotFound, "Specific documentation not found")
@@ -143,7 +181,7 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	sd.ActivityDateTime = time.Now()
 
 	// Validates required fields
-	if sd.StudentID == 0 || sd.DocType == "" || len(sd.File) == 0 || sd.FileName == "" {
+	if sd.StudentID == 0 || sd.DocType == "" || sd.FileName == "" || sd.FilePath == "" || sd.MimeType == "" || sd.SizeBytes == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -180,8 +218,20 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Inserts into documentation table
 	_, err = tx.ExecContext(r.Context(),
-		"INSERT INTO documentation (documentation_id, file, file_name) VALUES (?, ?, ?)",
-		lastID, sd.File, sd.FileName,
+		`INSERT INTO documentation (
+			documentation_id,
+			file_name,
+			file_path,
+			mime_type,
+			size_bytes,
+			uploaded_by
+		) VALUES (?, ?, ?, ?, ?, ?)`,
+		lastID,
+		sd.FileName,
+		sd.FilePath,
+		sd.MimeType,
+		sd.SizeBytes,
+		sd.UploadedBy,
 	)
 
 	// Error message if ExecContext fails
@@ -218,6 +268,73 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	})
 }
 
+func DownloadSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+	// Extracts the specific_documentation_id from URL path parameters
+	vars := mux.Vars(r)
+	idStr := vars["specific_documentation_id"]
+
+	// Converts "specific_documentation_id" string to integer
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Invalid specific_documentation_id")
+		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// SQL query to retrieve the full documentation record
+	query := `
+		SELECT
+			sd.specific_documentation_id,
+			sd.student_id,
+			sd.doc_type,
+			a.activity_datetime,
+			d.file_path,
+			d.file_name,
+			d.mime_type,
+			d.size_bytes,
+			d.uploaded_by
+		FROM specific_documentation sd
+		JOIN activity a ON sd.specific_documentation_id = a.activity_id
+		JOIN documentation d ON sd.specific_documentation_id = d.documentation_id
+		WHERE sd.specific_documentation_id = ?
+	`
+
+	// Creates an empty struct to store result
+	var sd models.SpecificDocumentation
+
+	// Executes the SQL query
+	err = db.QueryRowContext(r.Context(), query, id).Scan(
+		&sd.SpecificDocumentationID,
+		&sd.StudentID,
+		&sd.ActivityDateTime,
+		&sd.FilePath,
+		&sd.FileName,
+		&sd.MimeType,
+		&sd.SizeBytes,
+		&sd.UploadedBy,
+		&sd.DocType,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			utils.WriteError(w, http.StatusNotFound, "File not found")
+			return
+		}
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain documentation info")
+		log.Println("DB query error:", err)
+		return
+	}
+
+	// Clean and resolve full file path
+	fullPath := filepath.Clean(sd.FilePath)
+
+	// Sets appropriate headers for file download
+	w.Header().Set("Content-Type", sd.MimeType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", sd.FileName))
+
+	// Streams the file to the HTTP response
+	http.ServeFile(w, r, fullPath)
+}
+
 func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts path variables from the request
 	vars := mux.Vars(r)
@@ -251,7 +368,7 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	sd.ActivityDateTime = time.Now()
 
 	// Validates required fields
-	if sd.StudentID == 0 || sd.DocType == "" || len(sd.File) == 0 || sd.FileName == "" {
+	if sd.StudentID == 0 || sd.DocType == "" || sd.FileName == "" || sd.FilePath == "" || sd.MimeType == "" || sd.SizeBytes == 0 {
 		utils.WriteError(w, http.StatusBadRequest, "Missing required fields")
 		return
 	}
@@ -280,8 +397,10 @@ func UpdateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 
 	// Executes written SQL to update the documentation data
 	_, err = tx.ExecContext(r.Context(),
-		"UPDATE documentation SET file=?, file_name=? WHERE documentation_id=?",
-		sd.File, sd.FileName, specificDocumentationID,
+		`UPDATE documentation
+		SET file_name=?, file_path=?, mime_type=?, size_bytes=?, uploaded_by=?
+		WHERE documentation_id=?`,
+		sd.FileName, sd.FilePath, sd.MimeType, sd.SizeBytes, sd.UploadedBy, specificDocumentationID,
 	)
 
 	// Error message if ExecContext fails
