@@ -286,13 +286,13 @@ func DownloadSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Re
 		SELECT
 			sd.specific_documentation_id,
 			sd.student_id,
-			sd.doc_type,
 			a.activity_datetime,
 			d.file_path,
 			d.file_name,
 			d.mime_type,
 			d.size_bytes,
-			d.uploaded_by
+			d.uploaded_by,
+			sd.doc_type
 		FROM specific_documentation sd
 		JOIN activity a ON sd.specific_documentation_id = a.activity_id
 		JOIN documentation d ON sd.specific_documentation_id = d.documentation_id
