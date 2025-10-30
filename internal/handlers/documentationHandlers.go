@@ -15,9 +15,16 @@ import (
 func GetDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// All data being selected for this GET command
 	query := `
-		SELECT d.documentation_id, ac.activity_datetime, d.file, d.file_name
+		SELECT
+			d.documentation_id,
+			a.activity_datetime,
+			d.file_name,
+			d.file_path,
+			d.mime_type,
+			d.size_bytes,
+			d.uploaded_by
 		FROM documentation d
-		JOIN activity ac ON d.documentation_id = ac.activity_id
+		JOIN activity a ON d.documentation_id = a.activity_id
 	`
 
 	// Executes written SQL
@@ -38,7 +45,15 @@ func GetDocumentations(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var d models.Documentation
 		// Parses the current data into fields of "d" variable
-		if err := rows.Scan(&d.DocumentationID, &d.ActivityDateTime, &d.File, &d.FileName); err != nil {
+		if err := rows.Scan(
+			&d.DocumentationID,
+			&d.ActivityDateTime,
+			&d.FileName,
+			&d.FilePath,
+			&d.MimeType,
+			&d.SizeBytes,
+			&d.UploadedBy,
+		); err != nil {
 			utils.WriteError(w, http.StatusInternalServerError, "Failed to parse documentations")
 			log.Println("Row scan error:", err)
 			return
@@ -78,7 +93,14 @@ func GetDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	// All data being selected for this GET command
 	query := `
-		SELECT d.documentation_id, a.activity_datetime, d.file, d.file_name
+		SELECT
+			d.documentation_id,
+			a.activity_datetime,
+			d.file_name,
+			d.file_path,
+			d.mime_type,
+			d.size_bytes,
+			d.uploaded_by
 		FROM documentation d
 		JOIN activity a ON d.documentation_id = a.activity_id
 		WHERE d.documentation_id = ?
@@ -88,7 +110,15 @@ func GetDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	var d models.Documentation
 
 	// Executes written SQL and retrieves only one row
-	err = db.QueryRowContext(r.Context(), query, documentationID).Scan(&d.DocumentationID, &d.ActivityDateTime, &d.File, &d.FileName)
+	err = db.QueryRowContext(r.Context(), query, documentationID).Scan(
+		&d.DocumentationID,
+		&d.ActivityDateTime,
+		&d.FileName,
+		&d.FilePath,
+		&d.MimeType,
+		&d.SizeBytes,
+		&d.UploadedBy,
+	)
 
 	// Error message if no rows are found
 	if err == sql.ErrNoRows {

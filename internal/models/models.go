@@ -73,25 +73,34 @@ type Activity struct {
 type Documentation struct {
 	DocumentationID  int       `json:"documentation_id"`
 	ActivityDateTime time.Time `json:"activity_datetime"`
-	File             []byte    `json:"file"`
 	FileName         string    `json:"file_name"`
+	FilePath         string    `json:"file_path"`
+	MimeType         string    `json:"mime_type"`
+	SizeBytes        int64     `json:"size_bytes"`
+	UploadedBy       *int      `json:"uploaded_by,omitempty"`
 }
 
 type PersonalDocumentation struct {
 	PersonalDocumentationID int       `json:"personal_documentation_id"`
-	AdminID                 int       `json:"admin_id"`
 	ActivityDateTime        time.Time `json:"activity_datetime"`
-	File                    []byte    `json:"file"`
 	FileName                string    `json:"file_name"`
+	FilePath                string    `json:"file_path"`
+	MimeType                string    `json:"mime_type"`
+	SizeBytes               int64     `json:"size_bytes"`
+	UploadedBy              *int      `json:"uploaded_by,omitempty"`
+	AdminID                 int       `json:"admin_id"`
 }
 
 type SpecificDocumentation struct {
 	SpecificDocumentationID int       `json:"specific_documentation_id"`
-	StudentID               int       `json:"student_id"`
-	DocType                 string    `json:"doc_type"`
 	ActivityDateTime        time.Time `json:"activity_datetime"`
-	File                    []byte    `json:"file"`
 	FileName                string    `json:"file_name"`
+	FilePath                string    `json:"file_path"`
+	MimeType                string    `json:"mime_type"`
+	SizeBytes               int64     `json:"size_bytes"`
+	UploadedBy              *int      `json:"uploaded_by,omitempty"`
+	DocType                 string    `json:"doc_type"`
+	StudentID               int       `json:"student_id"`
 }
 
 type Disability struct {
