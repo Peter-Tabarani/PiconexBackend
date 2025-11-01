@@ -492,6 +492,26 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Retrieve file path before deleting from DB
+	var filePath string
+	err = db.QueryRowContext(r.Context(),
+		`SELECT d.file_path
+		 FROM documentation d
+		 JOIN personal_documentation pd ON d.documentation_id = pd.personal_documentation_id
+		 WHERE pd.personal_documentation_id = ?`,
+		personalDocumentationID,
+	).Scan(&filePath)
+
+	// Handles missing or invalid file path case
+	if err == sql.ErrNoRows {
+		utils.WriteError(w, http.StatusNotFound, "No file found for this documentation ID")
+		return
+	} else if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve file path")
+		log.Println("File path retrieval error:", err)
+		return
+	}
+
 	// Begin a transaction (not strictly required for single multi-table DELETE, but safer)
 	tx, err := db.BeginTx(r.Context(), nil)
 	if err != nil {
@@ -544,9 +564,17 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Delete the physical file (after DB commit)
+	if filePath != "" {
+		if err := os.Remove(filePath); err != nil {
+			log.Println("Failed to delete file from disk:", filePath, "Error:", err)
+		}
+	}
+
 	// Respond with success
 	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
 		"message":       "Personal documentation " + idStr + " deleted successfully",
+		"file_deleted":  filePath,
 		"rows_affected": rowsAffected / 3, // Each personal documentation involves 3 rows deleted
 	})
 }
@@ -565,6 +593,34 @@ func DeletePersonalDocumentationByAdminID(db *sql.DB, w http.ResponseWriter, r *
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "Invalid admin ID")
 		log.Println("Invalid ID parse error:", err)
+		return
+	}
+
+	// Retrieve all file paths before deleting from DB
+	rows, err := db.QueryContext(r.Context(), `
+		SELECT d.file_path
+		FROM documentation d
+		JOIN personal_documentation pd ON d.documentation_id = pd.personal_documentation_id
+		WHERE pd.admin_id = ?;
+	`, adminID)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve file paths")
+		log.Println("File path retrieval error:", err)
+		return
+	}
+	defer rows.Close()
+
+	var filePaths []string
+	for rows.Next() {
+		var fp string
+		if err := rows.Scan(&fp); err == nil && fp != "" {
+			filePaths = append(filePaths, fp)
+		}
+	}
+	_ = filePaths
+	if err := rows.Err(); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Error scanning file paths")
+		log.Println("Rows scan error:", err)
 		return
 	}
 
@@ -620,9 +676,17 @@ func DeletePersonalDocumentationByAdminID(db *sql.DB, w http.ResponseWriter, r *
 		return
 	}
 
+	// Delete physical files (after DB commit)
+	for _, path := range filePaths {
+		if err := os.Remove(path); err != nil {
+			log.Println("Failed to delete file:", path, "Error:", err)
+		}
+	}
+
 	// Respond with success
 	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
 		"message":       "All personal documentation for admin " + adminIDStr + " deleted successfully",
-		"rows_affected": rowsAffected / 3, // Each personal documentation involves 3 rows deleted
+		"rows_affected": rowsAffected / 3,
+		"files_deleted": len(filePaths),
 	})
 }
