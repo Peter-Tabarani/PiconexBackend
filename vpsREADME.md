@@ -6,8 +6,10 @@ ssh code = ssh piconex@178.156.189.138
 
     1. Database
         Lives on the VPS and stores all persistent data.
+        Logs backend actions to:
+            log/backend.log — shows live backend output (API logs, DB errors, etc.)
 
-    2. API / Backend Server
+    2. API / Backend
         Go server handles all API requests and communicates with the database.
 
     3. updateBackend.sh
@@ -33,6 +35,5 @@ ssh code = ssh piconex@178.156.189.138
                 Errors, warnings, and informational messages are logged to log/restart.log for debugging.
             3. Restart
                 Launches the new backend in the background using nohup, ensuring it continues running even after SSH logout.
-                Logs both restart actions and backend runtime output to:
+                Logs restart actions to:
                     log/restart.log — shows restart progress and status messages
-                    log/backend.log — shows live backend output (API logs, DB errors, etc.)
