@@ -166,7 +166,11 @@ func GetPersonalDocumentationByID(db *sql.DB, w http.ResponseWriter, r *http.Req
 func DownloadPersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts personal_documentation_id from URL path parameters
 	vars := mux.Vars(r)
-	idStr := vars["personal_documentation_id"]
+	idStr, ok := vars["personal_documentation_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing personal documentation ID")
+		return
+	}
 
 	// Converts "personal_documentation_id" string to integer
 	id, err := strconv.Atoi(idStr)
@@ -176,40 +180,29 @@ func DownloadPersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// SQL query to retrieve the full documentation record
+	// SQL query to retrieve documentation metadata
 	query := `
 		SELECT
-			pd.personal_documentation_id,
-			pd.admin_id,
-			a.activity_datetime,
 			d.file_name,
 			d.file_path,
 			d.mime_type,
 			d.size_bytes,
 			d.uploaded_by
-		FROM personal_documentation pd
-		JOIN activity a ON pd.personal_documentation_id = a.activity_id
-		JOIN documentation d ON pd.personal_documentation_id = d.documentation_id
+		FROM documentation d
+		JOIN personal_documentation pd ON pd.personal_documentation_id = d.documentation_id
 		WHERE pd.personal_documentation_id = ?
 	`
 
-	// Creates an empty struct to store result
-	var pd models.PersonalDocumentation
+	// Creates variables to store result
+	var fileName, filePath, mimeType string
+	var sizeBytes int64
+	var uploadedBy sql.NullInt64
 
 	// Executes the SQL query
-	err = db.QueryRowContext(r.Context(), query, id).Scan(
-		&pd.PersonalDocumentationID,
-		&pd.AdminID,
-		&pd.ActivityDateTime,
-		&pd.FileName,
-		&pd.FilePath,
-		&pd.MimeType,
-		&pd.SizeBytes,
-		&pd.UploadedBy,
-	)
+	err = db.QueryRowContext(r.Context(), query, id).Scan(&fileName, &filePath, &mimeType, &sizeBytes, &uploadedBy)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			utils.WriteError(w, http.StatusNotFound, "File not found")
+			utils.WriteError(w, http.StatusNotFound, "File not found for this documentation ID")
 			return
 		}
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain documentation info")
@@ -217,12 +210,22 @@ func DownloadPersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Clean and resolve full file path
-	fullPath := filepath.Clean(pd.FilePath)
+	// Validates file path and existence
+	if filePath == "" {
+		utils.WriteError(w, http.StatusInternalServerError, "File path not found in database")
+		return
+	}
+	fullPath := filepath.Clean(filePath)
 
-	// Sets headers for file download
-	w.Header().Set("Content-Type", pd.MimeType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", pd.FileName))
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		utils.WriteError(w, http.StatusNotFound, "File not found on server")
+		log.Println("Missing file on disk:", fullPath)
+		return
+	}
+
+	w.Header().Set("Content-Type", mimeType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fileName))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", sizeBytes))
 
 	// Streams the file to the HTTP response
 	http.ServeFile(w, r, fullPath)
@@ -252,47 +255,6 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Retrieves the uploaded file from the form
-	file, header, err := r.FormFile("file")
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Missing file in request")
-		log.Println("Form file error:", err)
-		return
-	}
-	defer file.Close()
-
-	// Defines file storage directory and constructs a unique filename
-	dstDir := "/home/piconex/database/files/personal"
-	if err := os.MkdirAll(dstDir, 0755); err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to ensure personal folder")
-		log.Println("MkdirAll error:", err)
-		return
-	}
-	fullPath := filepath.Join(dstDir, header.Filename)
-
-	// Creates a new file at the destination path
-	dst, err := os.Create(fullPath)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to create file on server")
-		log.Println("File create error:", err)
-		return
-	}
-	defer dst.Close()
-
-	// Copies the uploaded file content into the newly created file
-	sizeBytes, err := io.Copy(dst, file)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to save uploaded file")
-		log.Println("File write error:", err)
-		return
-	}
-
-	// Detects the file's MIME type from the uploaded header
-	mimeType := header.Header.Get("Content-Type")
-	if mimeType == "" {
-		mimeType = "application/octet-stream"
-	}
-
 	// Begins a new database transaction
 	tx, err := db.BeginTx(r.Context(), nil)
 	if err != nil {
@@ -317,6 +279,48 @@ func CreatePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve inserted activity ID")
 		log.Println("LastInsertId error:", err)
 		return
+	}
+
+	// Retrieves the uploaded file from the form
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Missing file in request")
+		log.Println("Form file error:", err)
+		return
+	}
+	defer file.Close()
+
+	// Defines file storage directory and constructs a unique filename
+	dstDir := "/home/piconex/database/files/personal"
+	if err := os.MkdirAll(dstDir, 0755); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to ensure personal folder")
+		log.Println("MkdirAll error:", err)
+		return
+	}
+	safeFileName := fmt.Sprintf("%d_%s", activityID, filepath.Base(header.Filename))
+	fullPath := filepath.Join(dstDir, safeFileName)
+
+	// Creates a new file at the destination path
+	dst, err := os.Create(fullPath)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to create file on server")
+		log.Println("File create error:", err)
+		return
+	}
+	defer dst.Close()
+
+	// Copies the uploaded file content into the newly created file
+	sizeBytes, err := io.Copy(dst, file)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to save uploaded file")
+		log.Println("File write error:", err)
+		return
+	}
+
+	// Detects the file's MIME type from the uploaded header
+	mimeType := header.Header.Get("Content-Type")
+	if mimeType == "" {
+		mimeType = "application/octet-stream"
 	}
 
 	// Inserts a new record into the documentation table with file metadata
@@ -493,14 +497,26 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Retrieve file path before deleting from DB
-	var filePath string
+	var filePath, fileName string
 	err = db.QueryRowContext(r.Context(),
-		`SELECT d.file_path
-		 FROM documentation d
-		 JOIN personal_documentation pd ON d.documentation_id = pd.personal_documentation_id
-		 WHERE pd.personal_documentation_id = ?`,
+		`SELECT d.file_path, d.file_name
+	 FROM documentation d
+	 JOIN personal_documentation pd ON d.documentation_id = pd.personal_documentation_id
+	 WHERE pd.personal_documentation_id = ?`,
 		personalDocumentationID,
-	).Scan(&filePath)
+	).Scan(&filePath, &fileName)
+
+	// Clean and reconstruct the actual stored file path (id-prefixed)
+	dir := filepath.Dir(filePath)
+	prefixedFile := fmt.Sprintf("%d_%s", personalDocumentationID, filepath.Base(fileName))
+	fullPath := filepath.Join(dir, prefixedFile)
+
+	// Clean and verify path
+	fullPath = filepath.Clean(fullPath)
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		log.Println("Warning: file not found on disk, skipping delete:", fullPath)
+		fullPath = "" // prevents unnecessary os.Remove()
+	}
 
 	// Handles missing or invalid file path case
 	if err == sql.ErrNoRows {
@@ -565,10 +581,8 @@ func DeletePersonalDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 	}
 
 	// Delete the physical file (after DB commit)
-	if filePath != "" {
-		if err := os.Remove(filePath); err != nil {
-			log.Println("Failed to delete file from disk:", filePath, "Error:", err)
-		}
+	if fullPath != "" && os.Remove(fullPath) != nil {
+		log.Println("Warning: failed to delete file from disk:", fullPath)
 	}
 
 	// Respond with success
@@ -598,7 +612,7 @@ func DeletePersonalDocumentationByAdminID(db *sql.DB, w http.ResponseWriter, r *
 
 	// Retrieve all file paths before deleting from DB
 	rows, err := db.QueryContext(r.Context(), `
-		SELECT d.file_path
+		SELECT d.documentation_id, d.file_path, d.file_name
 		FROM documentation d
 		JOIN personal_documentation pd ON d.documentation_id = pd.personal_documentation_id
 		WHERE pd.admin_id = ?;
@@ -612,9 +626,13 @@ func DeletePersonalDocumentationByAdminID(db *sql.DB, w http.ResponseWriter, r *
 
 	var filePaths []string
 	for rows.Next() {
-		var fp string
-		if err := rows.Scan(&fp); err == nil && fp != "" {
-			filePaths = append(filePaths, fp)
+		var id int
+		var filePath, fileName string
+		if err := rows.Scan(&id, &filePath, &fileName); err == nil && filePath != "" {
+			dir := filepath.Dir(filePath)
+			prefixed := fmt.Sprintf("%d_%s", id, filepath.Base(fileName))
+			fullPath := filepath.Clean(filepath.Join(dir, prefixed))
+			filePaths = append(filePaths, fullPath)
 		}
 	}
 	_ = filePaths
@@ -678,8 +696,8 @@ func DeletePersonalDocumentationByAdminID(db *sql.DB, w http.ResponseWriter, r *
 
 	// Delete physical files (after DB commit)
 	for _, path := range filePaths {
-		if err := os.Remove(path); err != nil {
-			log.Println("Failed to delete file:", path, "Error:", err)
+		if os.Remove(path) != nil {
+			log.Println("Warning: failed to delete file:", path)
 		}
 	}
 
