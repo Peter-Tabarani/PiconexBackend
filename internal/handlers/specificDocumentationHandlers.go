@@ -193,47 +193,6 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Retrieves the uploaded file from the form
-	file, header, err := r.FormFile("file")
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, "Missing file in request")
-		log.Println("Form file error:", err)
-		return
-	}
-	defer file.Close()
-
-	// Defines file storage directory and constructs a unique filename
-	dstDir := "/home/piconex/database/files/specific"
-	if err := os.MkdirAll(dstDir, 0755); err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to ensure specific folder")
-		log.Println("MkdirAll error:", err)
-		return
-	}
-	fullPath := filepath.Join(dstDir, header.Filename)
-
-	// Creates a new file at the destination path
-	dst, err := os.Create(fullPath)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to create file on server")
-		log.Println("File create error:", err)
-		return
-	}
-	defer dst.Close()
-
-	// Copies the uploaded file content into the newly created file
-	sizeBytes, err := io.Copy(dst, file)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "Failed to save uploaded file")
-		log.Println("File write error:", err)
-		return
-	}
-
-	// Detects the file's MIME type from the uploaded header
-	mimeType := header.Header.Get("Content-Type")
-	if mimeType == "" {
-		mimeType = "application/octet-stream"
-	}
-
 	// Begins a new database transaction
 	tx, err := db.BeginTx(r.Context(), nil)
 	if err != nil {
@@ -258,6 +217,48 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve inserted activity ID")
 		log.Println("LastInsertId error:", err)
 		return
+	}
+
+	// Retrieves the uploaded file from the form
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "Missing file in request")
+		log.Println("Form file error:", err)
+		return
+	}
+	defer file.Close()
+
+	// Defines file storage directory and constructs a unique filename
+	dstDir := "/home/piconex/database/files/specific"
+	if err := os.MkdirAll(dstDir, 0755); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to ensure specific folder")
+		log.Println("MkdirAll error:", err)
+		return
+	}
+	safeFileName := fmt.Sprintf("%d_%s", activityID, filepath.Base(header.Filename))
+	fullPath := filepath.Join(dstDir, safeFileName)
+
+	// Creates a new file at the destination path
+	dst, err := os.Create(fullPath)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to create file on server")
+		log.Println("File create error:", err)
+		return
+	}
+	defer dst.Close()
+
+	// Copies the uploaded file content into the newly created file
+	sizeBytes, err := io.Copy(dst, file)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "Failed to save uploaded file")
+		log.Println("File write error:", err)
+		return
+	}
+
+	// Detects the file's MIME type from the uploaded header
+	mimeType := header.Header.Get("Content-Type")
+	if mimeType == "" {
+		mimeType = "application/octet-stream"
 	}
 
 	// Inserts a new record into the documentation table with file metadata
@@ -303,7 +304,11 @@ func CreateSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 func DownloadSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Extracts the specific_documentation_id from URL path parameters
 	vars := mux.Vars(r)
-	idStr := vars["specific_documentation_id"]
+	idStr, ok := vars["specific_documentation_id"]
+	if !ok {
+		utils.WriteError(w, http.StatusBadRequest, "Missing specific documentation ID")
+		return
+	}
 
 	// Converts "specific_documentation_id" string to integer
 	id, err := strconv.Atoi(idStr)
@@ -313,42 +318,30 @@ func DownloadSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// SQL query to retrieve the full documentation record
+	// SQL query to retrieve documentation metadata
 	query := `
 		SELECT
-			sd.specific_documentation_id,
-			sd.student_id,
-			a.activity_datetime,
-			d.file_path,
 			d.file_name,
+			d.file_path,
 			d.mime_type,
 			d.size_bytes,
 			d.uploaded_by,
 			sd.doc_type
-		FROM specific_documentation sd
-		JOIN activity a ON sd.specific_documentation_id = a.activity_id
-		JOIN documentation d ON sd.specific_documentation_id = d.documentation_id
+		FROM documentation d
+		JOIN specific_documentation sd ON sd.specific_documentation_id = d.documentation_id
 		WHERE sd.specific_documentation_id = ?
 	`
 
-	// Creates an empty struct to store result
-	var sd models.SpecificDocumentation
+	// Variables to store result
+	var fileName, filePath, mimeType, docType string
+	var sizeBytes int64
+	var uploadedBy sql.NullInt64
 
 	// Executes the SQL query
-	err = db.QueryRowContext(r.Context(), query, id).Scan(
-		&sd.SpecificDocumentationID,
-		&sd.StudentID,
-		&sd.ActivityDateTime,
-		&sd.FilePath,
-		&sd.FileName,
-		&sd.MimeType,
-		&sd.SizeBytes,
-		&sd.UploadedBy,
-		&sd.DocType,
-	)
+	err = db.QueryRowContext(r.Context(), query, id).Scan(&fileName, &filePath, &mimeType, &sizeBytes, &uploadedBy, &docType)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			utils.WriteError(w, http.StatusNotFound, "File not found")
+			utils.WriteError(w, http.StatusNotFound, "File not found for this documentation ID")
 			return
 		}
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to obtain documentation info")
@@ -356,12 +349,22 @@ func DownloadSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Clean and resolve full file path
-	fullPath := filepath.Clean(sd.FilePath)
+	// Validates file path and existence
+	if filePath == "" {
+		utils.WriteError(w, http.StatusInternalServerError, "File path not found in database")
+		return
+	}
+	fullPath := filepath.Clean(filePath)
 
-	// Sets appropriate headers for file download
-	w.Header().Set("Content-Type", sd.MimeType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", sd.FileName))
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		utils.WriteError(w, http.StatusNotFound, "File not found on server")
+		log.Println("Missing file on disk:", fullPath)
+		return
+	}
+
+	w.Header().Set("Content-Type", mimeType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fileName))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", sizeBytes))
 
 	// Streams the file to the HTTP response
 	http.ServeFile(w, r, fullPath)
@@ -501,15 +504,26 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Retrieve file path before deleting from DB
-	var filePath string
+	var filePath, fileName string
 	err = db.QueryRowContext(r.Context(),
-		`SELECT d.file_path
-		 FROM documentation d
-		 JOIN specific_documentation sd ON d.documentation_id = sd.specific_documentation_id
-		 WHERE sd.specific_documentation_id = ?`,
+		`SELECT d.file_path, d.file_name
+		FROM documentation d
+		JOIN specific_documentation sd ON d.documentation_id = sd.specific_documentation_id
+		WHERE sd.specific_documentation_id = ?`,
 		specificDocumentationID,
-	).Scan(&filePath)
+	).Scan(&filePath, &fileName)
+
+	// Clean and reconstruct the actual stored file path (id-prefixed)
+	dir := filepath.Dir(filePath)
+	prefixedFile := fmt.Sprintf("%d_%s", specificDocumentationID, filepath.Base(fileName))
+	fullPath := filepath.Join(dir, prefixedFile)
+
+	// Clean and verify path
+	fullPath = filepath.Clean(fullPath)
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		log.Println("Warning: file not found on disk, skipping delete:", fullPath)
+		fullPath = "" // prevents unnecessary os.Remove()
+	}
 
 	// Handles missing or invalid file path case
 	if err == sql.ErrNoRows {
@@ -573,12 +587,8 @@ func DeleteSpecificDocumentation(db *sql.DB, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Delete the physical file (after DB commit)
-	if filePath != "" {
-		if err := os.Remove(filePath); err != nil {
-			// Non-fatal: log the issue but still return success
-			log.Println("Failed to delete file from disk:", filePath, "Error:", err)
-		}
+	if fullPath != "" && os.Remove(fullPath) != nil {
+		log.Println("Warning: failed to delete file from disk:", fullPath)
 	}
 
 	// Respond with success JSON
@@ -606,13 +616,13 @@ func DeleteSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r
 		return
 	}
 
-	// Retrieve all file paths before deleting from DB
+	// Retrieve all file info before deleting from DB
 	rows, err := db.QueryContext(r.Context(), `
-		SELECT d.file_path
-		FROM documentation d
-		JOIN specific_documentation sd ON d.documentation_id = sd.specific_documentation_id
-		WHERE sd.student_id = ?;
-	`, studentID)
+	SELECT d.documentation_id, d.file_path, d.file_name
+	FROM documentation d
+	JOIN specific_documentation sd ON d.documentation_id = sd.specific_documentation_id
+	WHERE sd.student_id = ?;
+`, studentID)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to retrieve file paths")
 		log.Println("File path retrieval error:", err)
@@ -622,9 +632,13 @@ func DeleteSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r
 
 	var filePaths []string
 	for rows.Next() {
-		var fp string
-		if err := rows.Scan(&fp); err == nil && fp != "" {
-			filePaths = append(filePaths, fp)
+		var id int
+		var filePath, fileName string
+		if err := rows.Scan(&id, &filePath, &fileName); err == nil && filePath != "" {
+			dir := filepath.Dir(filePath)
+			prefixed := fmt.Sprintf("%d_%s", id, filepath.Base(fileName))
+			fullPath := filepath.Clean(filepath.Join(dir, prefixed))
+			filePaths = append(filePaths, fullPath)
 		}
 	}
 	_ = filePaths
@@ -688,8 +702,8 @@ func DeleteSpecificDocumentationByStudentID(db *sql.DB, w http.ResponseWriter, r
 
 	// Delete physical files (after DB commit)
 	for _, path := range filePaths {
-		if err := os.Remove(path); err != nil {
-			log.Println("Failed to delete file:", path, "Error:", err)
+		if os.Remove(path) != nil {
+			log.Println("Warning: failed to delete file:", path)
 		}
 	}
 
