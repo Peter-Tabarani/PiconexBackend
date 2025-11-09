@@ -63,7 +63,11 @@ func LoginHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return token in JSON response
-	json.NewEncoder(w).Encode(map[string]string{"token": token})
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"token":   token,
+		"user_id": userID,
+	})
+
 }
 
 func SignupHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
