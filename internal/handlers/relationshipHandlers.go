@@ -267,8 +267,8 @@ func DeletePinned(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Get number of rows affected
 	rowsAffected, _ := res.RowsAffected()
 
-	// Error message if no rows were deleted
-	if rowsAffected == 0 {
+	// Error message if no rows were deleted and it was a single delete
+	if adminIDStr != "" && studentIDStr != "" && rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "No pinned records found to delete")
 		return
 	}
@@ -411,8 +411,8 @@ func DeleteStuAccom(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Get number of rows affected
 	rowsAffected, _ := res.RowsAffected()
 
-	// Error message if no rows were deleted
-	if rowsAffected == 0 {
+	// Error message if no rows were deleted and it was a single delete
+	if studentIDStr != "" && accomIDStr != "" && rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "No student accommodation records found to delete")
 		return
 	}
@@ -553,8 +553,8 @@ func DeleteStuDis(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Get number of rows affected
 	rowsAffected, _ := res.RowsAffected()
 
-	// Error message if no rows were deleted
-	if rowsAffected == 0 {
+	// Error message if no rows were deleted and it was a single delete
+	if studentIDStr != "" && disabilityIDStr != "" && rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "No stu_dis records found to delete")
 		return
 	}
@@ -697,8 +697,8 @@ func DeletePocAdmin(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	// Get number of rows affected
 	rowsAffected, _ := res.RowsAffected()
 
-	// Error message if no rows were deleted
-	if rowsAffected == 0 {
+	// Error message if no rows were deleted and it was a single delete
+	if pocIDStr != "" && adminIDStr != "" && rowsAffected == 0 {
 		utils.WriteError(w, http.StatusNotFound, "No pocadmin records found to delete")
 		return
 	}

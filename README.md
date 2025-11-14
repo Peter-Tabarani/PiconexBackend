@@ -40,12 +40,21 @@ curl -X POST http://localhost:8080/point-of-contact \
 "student_id": 15
 }'
 
-curl -X GET http://localhost:8080/specific_documentation \
+curl -X POST http://178.156.189.138:8080/specific-documentation \
+ -H "Authorization: Bearer superkey" \
+ -F "student_id=15" \
+ -F "doc_type=trad" \
+ -F "file=@~/Downloads/This is a TEST PDF.pdf"
+
+curl -X DELETE http://178.156.189.138:8080/specific-documentation/307 \
+ -H "Authorization: Bearer superkey"
+
+curl -X GET http://178.156.189.138:8080/disability \
  -H "Authorization: Bearer superkey"
 
 curl -o "downloaded_document.pdf" -H "Authorization: Bearer superkey" http://178.156.189.138:8080/specific-documentation/65/download
 
-curl -X GET http://178.156.189.138:8080/point-of-contact/summary \
+curl -X GET http://178.156.189.138:8080/admin \
  -H "Authorization: Bearer superkey"
 
 curl -X DELETE http://localhost:8080/point-of-contact/student/42 \
